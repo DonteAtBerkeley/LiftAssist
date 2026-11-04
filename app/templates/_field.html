@@ -1,0 +1,5 @@
+{% macro field(f, autocomplete="") %}
+  <label for="{{ f.id }}">{{ f.label.text }}</label>
+  {{ f(autocomplete=autocomplete, **({"aria-invalid": "true"} if f.errors else {})) }}
+  {% for e in f.errors %}<small class="form-error">{{ e }}</small>{% endfor %}
+{% endmacro %}
