@@ -32,3 +32,11 @@ When done: run the tests, tell me the exact commands to run the app locally so I
 - **UI**: `base.html` with Pico CSS (CDN), orange `#F26B1D` accent, nav that changes when logged in.
 - **Tests**: `tests/conftest.py` (in-memory SQLite, CSRF off) + `tests/test_auth.py` (sign up → log out → log in).
 - **Notes**: Postgres driver is `psycopg` v3 (the default for the pinned SQLAlchemy 2.1). Code targets Python 3.12 (`.python-version`); it was tested locally on 3.13 because 3.12 isn't installed on this laptop.
+
+---
+
+## Prompt 2 — Deploy-ready for Render + Neon
+
+Before I push: make this branch deploy-ready for Render + Neon Postgres. Add psycopg2-binary to requirements.txt, make sure run.py exposes the Flask app as `app` so `gunicorn run:app` works, and confirm `flask db upgrade` works with FLASK_APP=run.py. Append this prompt and a one-line summary to prompts/auth.md. Run the tests, then commit.
+
+**Summary:** Added psycopg2-binary (kept psycopg v3, which SQLAlchemy 2.1 uses for `postgresql://` URLs), confirmed `run.py` exposes `app` and that `gunicorn run:app` serves the app, and confirmed `FLASK_APP=run.py flask db upgrade` creates the users table (on SQLite, plus the generated Postgres SQL checked offline).
