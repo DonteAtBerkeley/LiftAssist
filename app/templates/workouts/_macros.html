@@ -17,7 +17,7 @@
   <form class="star-form" method="post"
         action="{{ url_for('stars.unstar' if on else 'stars.star', workout_id=w.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="next" value="{{ request.path }}">
+    <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
     <button type="submit" class="star-button{{ ' on' if on }}" aria-pressed="{{ 'true' if on else 'false' }}"
             aria-label="{{ 'Unstar' if on else 'Star' }} {{ title(w) }}"
             title="{{ 'Unstar' if on else 'Star' }}">{{ '★' if on else '☆' }}</button>

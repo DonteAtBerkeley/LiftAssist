@@ -1,17 +1,26 @@
 {% extends "base.html" %}
 {% from "workouts/_macros.html" import card %}
+{% from "workouts/_search.html" import search_bar, no_matches %}
 {% block title %}Starred · LiftAssist{% endblock %}
 {% block content %}
 <div class="page-head">
   <h1>Starred</h1>
 </div>
 
+{% if has_any %}
+  {{ search_bar(filters, types, sorts, url_for('stars.starred'), workouts|length) }}
+{% endif %}
+
 {% for w in workouts %}
   {{ card(w, starred) }}
 {% else %}
-  <article>
-    <p>No starred workouts yet — tap ☆ on a great session.</p>
-    <a href="{{ url_for('main.home') }}" role="button" class="secondary outline">See all workouts</a>
-  </article>
+  {% if has_any %}
+    {{ no_matches(url_for('stars.starred')) }}
+  {% else %}
+    <article>
+      <p>No starred workouts yet — tap ☆ on a great session.</p>
+      <a href="{{ url_for('main.home') }}" role="button" class="secondary outline">See all workouts</a>
+    </article>
+  {% endif %}
 {% endfor %}
 {% endblock %}

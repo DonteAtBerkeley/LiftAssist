@@ -78,6 +78,18 @@
     .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-bottom: 1rem; }
     .meta strong { display: block; font-size: 1.25rem; }
     .exercise-group table { margin-bottom: 1.25rem; }
+
+    /* Search / filter / sort */
+    .search-bar { margin-bottom: 1rem; }
+    .search-bar [role="group"] { margin-bottom: 0.5rem; }
+    .search-bar [role="group"] button { flex: 0 0 auto; }
+    .filters { margin-bottom: 0.5rem; }
+    .filters summary { font-weight: 600; color: var(--pico-primary); }
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.75rem; }
+    .filter-grid label { font-size: 0.875rem; }
+    .filter-grid select, .filter-grid input { margin-top: 0.25rem; margin-bottom: 0.75rem; }
+    .filters button { width: 100%; margin: 0; }
+    .search-status { display: flex; justify-content: space-between; align-items: baseline; margin: 0; }
     @media (max-width: 30rem) { .nav-email { display: none; } }
   </style>
 </head>

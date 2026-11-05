@@ -13,20 +13,33 @@ from sqlalchemy.orm import selectinload
 from . import catalog, db
 from .forms import MSG_BLANK_WEIGHT, WorkoutForm
 from .models import Exercise, Set, Workout
+from .search import Filters, apply_filters
 
 bp = Blueprint("workouts", __name__, url_prefix="/workouts")
 
 
 # --- Queries (all scoped to the logged-in user) ------------------------------
 
-def own_workouts():
-    """The logged-in user's workouts, newest first, with their sets preloaded."""
-    return db.session.execute(
+def own_workouts(filters=None):
+    """The logged-in user's workouts with their sets preloaded, newest first.
+
+    Pass a `search.Filters` to search / filter / sort. The user filter is applied first
+    and always, so search only ever narrows *your* workouts.
+    """
+    query = (
         db.select(Workout)
         .filter_by(user_id=current_user.id)
         .options(selectinload(Workout.sets))
-        .order_by(Workout.date.desc(), Workout.id.desc())
-    ).scalars().all()
+    )
+    query = apply_filters(query, filters or Filters())
+    return db.session.execute(query).scalars().all()
+
+
+def has_any_workouts():
+    """Does the logged-in user have at least one workout? (Picks which empty state to show.)"""
+    return db.session.execute(
+        db.select(Workout.id).filter_by(user_id=current_user.id).limit(1)
+    ).first() is not None
 
 
 def _get_own_workout(workout_id):

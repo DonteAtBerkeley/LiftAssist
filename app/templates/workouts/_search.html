@@ -1,0 +1,61 @@
+{# Search / filter / sort bar. A plain GET form, so every choice lands in the URL
+   (?q=squat&type=lift&sort=effort): bookmarkable, and the back button works.
+   The fields are filled in from `filters` so the current choices stay visible. #}
+{% macro search_bar(filters, types, sorts, action, count) %}
+<form class="search-bar" method="get" action="{{ action }}" role="search">
+  <div role="group">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Search title, notes, exercise…"
+           aria-label="Search workouts" maxlength="100" autocomplete="off">
+    <button type="submit">Search</button>
+  </div>
+
+  {# On phones this is a "Filters" toggle; on wider screens a small script opens it. #}
+  <details class="filters"{% if filters.filter_count %} open{% endif %}>
+    <summary>Filters{% if filters.filter_count %} ({{ filters.filter_count }}){% endif %}</summary>
+    <div class="filter-grid">
+      <label>Type
+        <select name="type">
+          {% for value, label in types.items() %}
+            <option value="{{ value }}"{% if filters.type == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Sort
+        <select name="sort">
+          {% for value, label in sorts.items() %}
+            <option value="{{ value }}"{% if filters.sort == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>From
+        <input type="date" name="from" value="{{ filters.date_from.isoformat() if filters.date_from else '' }}">
+      </label>
+      <label>To
+        <input type="date" name="to" value="{{ filters.date_to.isoformat() if filters.date_to else '' }}">
+      </label>
+    </div>
+    <button type="submit" class="secondary">Apply</button>
+  </details>
+
+  {% if filters.active %}
+    <p class="search-status">
+      <small class="muted">{{ count }} workout{{ '' if count == 1 else 's' }}</small>
+      <a href="{{ action }}">Clear</a>
+    </p>
+  {% endif %}
+</form>
+<script>
+  // Wide screens: show the filters without needing the toggle.
+  if (window.matchMedia("(min-width: 40rem)").matches) {
+    document.querySelectorAll("details.filters").forEach(d => d.open = true);
+  }
+</script>
+{% endmacro %}
+
+{# Shown when search/filters hide everything. #}
+{% macro no_matches(action) %}
+<article>
+  <p>No workouts match — try a different search.</p>
+  <a href="{{ action }}" role="button" class="secondary outline">Clear search</a>
+</article>
+{% endmacro %}
