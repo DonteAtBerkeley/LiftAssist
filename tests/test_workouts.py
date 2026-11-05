@@ -102,7 +102,7 @@ def test_blank_set_rows_ignored_and_blank_weight_is_bodyweight(client, user_a):
 def test_set_with_exercise_but_no_reps_is_not_saved(client, user_a):
     r = client.post("/workouts/new", data=lift_data(**{"sets-0-reps": ""}))
     assert r.status_code == 200
-    assert b"Reps are required." in r.data
+    assert b"How many reps?" in r.data
     assert db.session.execute(db.select(db.func.count(Workout.id))).scalar() == 0
 
 

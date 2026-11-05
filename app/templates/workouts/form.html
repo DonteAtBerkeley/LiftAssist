@@ -4,16 +4,18 @@
 
 {% macro errors(f) %}{% for e in f.errors %}<small class="form-error">{{ e }}</small>{% endfor %}{% endmacro %}
 
+{% macro bad(f) %}{{ ' aria-invalid="true"'|safe if f and f.errors }}{% endmacro %}
+
 {% macro set_row(index, exercise, weight, reps, number, row=None) %}
   <div class="set-row" data-set-row>
     <span class="set-num" data-set-num>{{ number }}</span>
     <input class="set-exercise" name="sets-{{ index }}-exercise" value="{{ exercise }}"
-           list="exercise-options" placeholder="Exercise" aria-label="Exercise"
+           list="exercise-options" placeholder="Exercise" aria-label="Exercise"{{ bad(row.exercise if row) }}
            autocomplete="off" autocapitalize="words">
     <input name="sets-{{ index }}-weight_lb" value="{{ weight }}" type="number" step="any" min="0"
-           inputmode="decimal" placeholder="lb" aria-label="Weight (lb)">
+           inputmode="decimal" placeholder="lb" aria-label="Weight (lb)"{{ bad(row.weight_lb if row) }}>
     <input name="sets-{{ index }}-reps" value="{{ reps }}" type="number" min="1" step="1"
-           inputmode="numeric" placeholder="reps" aria-label="Reps">
+           inputmode="numeric" placeholder="reps" aria-label="Reps"{{ bad(row.reps if row) }}>
     <button type="button" class="secondary outline remove-set" data-remove-set aria-label="Remove set">✕</button>
     {% if row %}{{ errors(row.exercise) }}{{ errors(row.weight_lb) }}{{ errors(row.reps) }}{% endif %}
   </div>
@@ -24,10 +26,14 @@
 {% block content %}
 <h1>{{ 'Edit workout' if workout else 'New workout' }}</h1>
 
+{% if form.summary_error %}
+  <p class="form-summary" role="alert">{{ form.summary_error }}</p>
+{% endif %}
+
 <form method="post" novalidate id="workout-form">
   {{ form.hidden_tag() }}
 
-  <fieldset>
+  <fieldset{{ bad(form.workout_type) }}>
     <legend>{{ form.workout_type.label.text }}</legend>
     <div class="type-choice">
       {% for choice in form.workout_type %}
@@ -43,7 +49,7 @@
   <div class="grid-2">
     <div>
       <label for="{{ form.duration_min.id }}">{{ form.duration_min.label.text }}</label>
-      {{ form.duration_min(type="number", min="0", inputmode="numeric") }}
+      {{ form.duration_min(type="number", min="1", step="1", inputmode="numeric", **({"aria-invalid": "true"} if form.duration_min.errors else {})) }}
       {{ errors(form.duration_min) }}
     </div>
     <div>{{ field(form.effort) }}</div>
@@ -51,12 +57,13 @@
 
   <section id="run-fields" data-for-type="run">
     <label for="{{ form.distance_mi.id }}">{{ form.distance_mi.label.text }}</label>
-    {{ form.distance_mi(type="number", step="any", min="0", inputmode="decimal") }}
+    {{ form.distance_mi(type="number", step="any", min="0", inputmode="decimal", **({"aria-invalid": "true"} if form.distance_mi.errors else {})) }}
     {{ errors(form.distance_mi) }}
   </section>
 
   <section id="lift-fields" data-for-type="lift">
     <h2 style="margin: 0.5rem 0 0">Sets</h2>
+    {% if form.sets_error %}<small class="form-error sets-error" id="sets-error">{{ form.sets_error }}</small>{% endif %}
     <datalist id="exercise-options">
       {% for name in exercise_names %}<option value="{{ name }}">{% endfor %}
     </datalist>
