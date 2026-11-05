@@ -10,3 +10,31 @@
 {%- endmacro %}
 
 {% macro title(w) %}{{ w.title or ('Run' if w.workout_type == 'run' else 'Lift') }}{% endmacro %}
+
+{# Star toggle: a small POST form (never a plain link). `next` brings you back to the same spot. #}
+{% macro star_button(w, starred) -%}
+  {%- set on = w.id in starred -%}
+  <form class="star-form" method="post"
+        action="{{ url_for('stars.unstar' if on else 'stars.star', workout_id=w.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <button type="submit" class="star-button{{ ' on' if on }}" aria-pressed="{{ 'true' if on else 'false' }}"
+            aria-label="{{ 'Unstar' if on else 'Star' }} {{ title(w) }}"
+            title="{{ 'Unstar' if on else 'Star' }}">{{ '★' if on else '☆' }}</button>
+  </form>
+{%- endmacro %}
+
+{# One workout card. The title link stretches over the whole card; the star sits on top of it. #}
+{% macro card(w, starred) %}
+  <article class="card" id="workout-{{ w.id }}">
+    <div class="card-top">
+      <small class="muted">{{ w.date.strftime('%a, %b %-d, %Y') }}</small>
+      <span class="card-tags">
+        <span class="badge">{{ w.workout_type }}</span>
+        {{ star_button(w, starred) }}
+      </span>
+    </div>
+    <p class="card-title"><a class="card-link" href="{{ url_for('workouts.detail', workout_id=w.id) }}">{{ title(w) }}</a></p>
+    <p class="summary">{{ summary(w) }}</p>
+  </article>
+{% endmacro %}

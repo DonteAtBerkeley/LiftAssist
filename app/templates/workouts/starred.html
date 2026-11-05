@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "workouts/_macros.html" import card %}
+{% block title %}Starred · LiftAssist{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Starred</h1>
+</div>
+
+{% for w in workouts %}
+  {{ card(w, starred) }}
+{% else %}
+  <article>
+    <p>No starred workouts yet — tap ☆ on a great session.</p>
+    <a href="{{ url_for('main.home') }}" role="button" class="secondary outline">See all workouts</a>
+  </article>
+{% endfor %}
+{% endblock %}
