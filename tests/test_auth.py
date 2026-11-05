@@ -9,7 +9,7 @@ def test_signup_logout_login(client):
         data={"email": email, "password": password, "confirm_password": password},
         follow_redirects=True,
     )
-    assert f"Welcome, {email}".encode() in r.data
+    assert b"Workouts" in r.data and email.encode() in r.data  # home = workout list
 
     user = User.query.filter_by(email=email).one()
     assert user.password_hash != password  # stored hashed, not plain text
@@ -21,4 +21,4 @@ def test_signup_logout_login(client):
     r = client.post(
         "/login", data={"email": email, "password": password}, follow_redirects=True
     )
-    assert f"Welcome, {email}".encode() in r.data
+    assert b"Workouts" in r.data and email.encode() in r.data  # home = workout list

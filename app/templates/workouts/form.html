@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% from "_field.html" import field %}
+{% block title %}{{ 'Edit workout' if workout else 'New workout' }} · LiftAssist{% endblock %}
+
+{% macro errors(f) %}{% for e in f.errors %}<small class="form-error">{{ e }}</small>{% endfor %}{% endmacro %}
+
+{% macro set_row(index, exercise, weight, reps, number, row=None) %}
+  <div class="set-row" data-set-row>
+    <span class="set-num" data-set-num>{{ number }}</span>
+    <input class="set-exercise" name="sets-{{ index }}-exercise" value="{{ exercise }}"
+           list="exercise-options" placeholder="Exercise" aria-label="Exercise"
+           autocomplete="off" autocapitalize="words">
+    <input name="sets-{{ index }}-weight_lb" value="{{ weight }}" type="number" step="any" min="0"
+           inputmode="decimal" placeholder="lb" aria-label="Weight (lb)">
+    <input name="sets-{{ index }}-reps" value="{{ reps }}" type="number" min="1" step="1"
+           inputmode="numeric" placeholder="reps" aria-label="Reps">
+    <button type="button" class="secondary outline remove-set" data-remove-set aria-label="Remove set">✕</button>
+    {% if row %}{{ errors(row.exercise) }}{{ errors(row.weight_lb) }}{{ errors(row.reps) }}{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro val(f) %}{{ f.raw_data[0] if f.raw_data else ('%g' % f.data if f.data is not none else '') }}{% endmacro %}
+
+{% block content %}
+<h1>{{ 'Edit workout' if workout else 'New workout' }}</h1>
+
+<form method="post" novalidate id="workout-form">
+  {{ form.hidden_tag() }}
+
+  <fieldset>
+    <legend>{{ form.workout_type.label.text }}</legend>
+    <div class="type-choice">
+      {% for choice in form.workout_type %}
+        <label>{{ choice(**{"data-type-radio": ""}) }} {{ choice.label.text }}</label>
+      {% endfor %}
+    </div>
+    {{ errors(form.workout_type) }}
+  </fieldset>
+
+  {{ field(form.date) }}
+  {{ field(form.title, "off") }}
+
+  <div class="grid-2">
+    <div>
+      <label for="{{ form.duration_min.id }}">{{ form.duration_min.label.text }}</label>
+      {{ form.duration_min(type="number", min="0", inputmode="numeric") }}
+      {{ errors(form.duration_min) }}
+    </div>
+    <div>{{ field(form.effort) }}</div>
+  </div>
+
+  <section id="run-fields" data-for-type="run">
+    <label for="{{ form.distance_mi.id }}">{{ form.distance_mi.label.text }}</label>
+    {{ form.distance_mi(type="number", step="any", min="0", inputmode="decimal") }}
+    {{ errors(form.distance_mi) }}
+  </section>
+
+  <section id="lift-fields" data-for-type="lift">
+    <h2 style="margin: 0.5rem 0 0">Sets</h2>
+    <datalist id="exercise-options">
+      {% for name in exercise_names %}<option value="{{ name }}">{% endfor %}
+    </datalist>
+    <div id="set-rows">
+      {% for row in form.sets %}
+        {{ set_row(loop.index0, row.form.exercise.data or '', val(row.form.weight_lb),
+                   val(row.form.reps), loop.index, row.form) }}
+      {% endfor %}
+    </div>
+    <div class="set-actions">
+      <button type="button" class="secondary" id="add-set">+ Add set</button>
+    </div>
+  </section>
+
+  {{ field(form.notes) }}
+  {{ form.submit() }}
+</form>
+{% if workout %}
+  <p><a href="{{ url_for('workouts.detail', workout_id=workout.id) }}">Cancel</a></p>
+{% endif %}
+
+<template id="set-row-template">{{ set_row('__i__', '', '', '', '') }}</template>
+
+<script>
+(function () {
+  var form = document.getElementById("workout-form");
+  var rows = document.getElementById("set-rows");
+  var template = document.getElementById("set-row-template");
+  var nextIndex = rows.querySelectorAll("[data-set-row]").length;
+
+  // Show distance for runs, sets for lifts.
+  function showType() {
+    var checked = form.querySelector("[data-type-radio]:checked");
+    var type = checked ? checked.value : "lift";
+    form.querySelectorAll("[data-for-type]").forEach(function (el) {
+      el.hidden = el.getAttribute("data-for-type") !== type;
+    });
+  }
+
+  function renumber() {
+    rows.querySelectorAll("[data-set-num]").forEach(function (el, i) { el.textContent = i + 1; });
+  }
+
+  // New set rows copy the previous row (same exercise, weight, reps) so repeat sets are one tap.
+  document.getElementById("add-set").addEventListener("click", function () {
+    var all = rows.querySelectorAll("[data-set-row]");
+    var last = all[all.length - 1];
+    var html = template.innerHTML.replace(/__i__/g, String(nextIndex++));
+    rows.insertAdjacentHTML("beforeend", html);
+    var added = rows.lastElementChild;
+    if (last) {
+      var from = last.querySelectorAll("input"), to = added.querySelectorAll("input");
+      for (var i = 0; i < from.length; i++) to[i].value = from[i].value;
+    }
+    renumber();
+    added.querySelector(last ? "input[name$='-reps']" : "input").focus();
+  });
+
+  rows.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-remove-set]");
+    if (!btn) return;
+    btn.closest("[data-set-row]").remove();
+    renumber();
+  });
+
+  form.querySelectorAll("[data-type-radio]").forEach(function (r) { r.addEventListener("change", showType); });
+  showType();
+
+  {% if not workout and request.method == 'GET' %}
+  // Default the date to *your* today (the server may be in a different time zone).
+  var d = new Date(), dateInput = document.getElementById("{{ form.date.id }}");
+  dateInput.value = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  {% endif %}
+})();
+</script>
+{% endblock %}

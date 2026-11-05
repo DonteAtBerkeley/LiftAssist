@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "workouts/_macros.html" import num, title %}
+{% block title %}{{ title(workout) }} · LiftAssist{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('main.home') }}">← All workouts</a></p>
+
+<small class="muted">{{ workout.date.strftime('%A, %B %-d, %Y') }}</small>
+<h1 style="margin: 0.25rem 0 0.5rem">{{ title(workout) }} <span class="badge">{{ workout.workout_type }}</span></h1>
+
+<div class="meta">
+  {% if workout.workout_type == 'run' %}
+    <div><small class="muted">Distance</small><strong>{{ num(workout.distance_mi) ~ ' mi' if workout.distance_mi is not none else '—' }}</strong></div>
+  {% else %}
+    <div><small class="muted">Sets</small><strong>{{ workout.sets|length }}</strong></div>
+  {% endif %}
+  <div><small class="muted">Duration</small><strong>{{ (workout.duration_min ~ ' min') if workout.duration_min is not none else '—' }}</strong></div>
+  <div><small class="muted">Effort</small><strong>{{ (workout.effort ~ '/5') if workout.effort else '—' }}</strong></div>
+</div>
+
+{% if workout.workout_type == 'lift' %}
+  {% for exercise, sets in groups %}
+    <section class="exercise-group">
+      <h3 style="margin-bottom: 0.5rem">{{ exercise.name }}</h3>
+      <table>
+        <thead><tr><th>Set</th><th>Weight</th><th>Reps</th></tr></thead>
+        <tbody>
+          {% for s in sets %}
+            <tr><td>{{ loop.index }}</td><td>{{ num(s.weight_lb) }} lb</td><td>{{ s.reps }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}
+    <p class="muted">No sets logged.</p>
+  {% endfor %}
+{% endif %}
+
+{% if workout.notes %}
+  <h3 style="margin-bottom: 0.5rem">Notes</h3>
+  <p style="white-space: pre-line">{{ workout.notes }}</p>
+{% endif %}
+
+<div class="actions">
+  <a href="{{ url_for('workouts.edit', workout_id=workout.id) }}" role="button">Edit</a>
+  <a href="{{ url_for('workouts.delete', workout_id=workout.id) }}" role="button" class="secondary outline">Delete</a>
+</div>
+{% endblock %}
