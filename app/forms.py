@@ -4,6 +4,7 @@ from datetime import date
 from flask_wtf import FlaskForm
 from wtforms import (
     DateField,
+    BooleanField,
     EmailField,
     FieldList,
     FloatField,
@@ -70,7 +71,6 @@ class LoginForm(FlaskForm):
 # Every message is written to be shown right next to the field it's about.
 
 MSG_DATE = "Pick a date — today or earlier."
-MSG_TITLE = "Give this workout a name."
 MSG_TITLE_LONG = "Keep the name to 120 characters or fewer."
 MSG_TYPE = "Choose lift or run."
 MSG_EFFORT = "Effort must be a whole number from 1 to 5."
@@ -90,6 +90,10 @@ MSG_REPS_MAX = "That's a lot of reps — check this number."
 MSG_WEIGHT = "Weight can't be negative."
 MSG_WEIGHT_NUMBER = "Weight must be a number (leave it blank for bodyweight)."
 MSG_SUMMARY = "Please fix the highlighted fields."
+MSG_BLANK_WEIGHT = "Some sets have no weight. Is this a bodyweight exercise?"
+
+DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 MAX_DURATION_MIN = 24 * 60
 MAX_REPS = 1000
@@ -124,6 +128,8 @@ def _has_input(field):
 class SetForm(Form):
     """One row on the workout form. A plain Form (not FlaskForm) so rows don't each get a CSRF token."""
 
+    needs_weight = False  # set by the view: blank weight on a weighted exercise (see the warning)
+
     exercise = StringField(
         "Exercise",
         filters=[lambda v: " ".join(v.split()) if isinstance(v, str) else v],
@@ -143,6 +149,9 @@ class SetForm(Form):
             number_check(lambda x: x <= MAX_REPS, MSG_REPS_MAX),
         ],
     )
+
+    def weight_is_blank(self):
+        return not _has_input(self.weight_lb)
 
     def is_blank(self):
         """True if the user typed nothing at all in this row (such rows are skipped, not errors)."""
@@ -175,7 +184,8 @@ class WorkoutForm(FlaskForm):
     title = StringField(
         "Title",
         filters=[lambda v: v.strip() if isinstance(v, str) else v],
-        validators=[DataRequired(message=MSG_TITLE), Length(max=120, message=MSG_TITLE_LONG)],
+        # Optional: a blank title becomes e.g. "Wednesday, Nov 4 — Lift" (see default_title).
+        validators=[Optional(), Length(max=120, message=MSG_TITLE_LONG)],
     )
     workout_type = RadioField(
         "Type",
@@ -209,6 +219,8 @@ class WorkoutForm(FlaskForm):
     notes = TextAreaField("Notes", validators=[Optional()])
     sets = FieldList(FormField(SetForm), min_entries=0)
     submit = SubmitField("Save workout")
+    # Sent only by the "Save anyway" button on the blank-weight warning.
+    confirm_blank_weight = BooleanField()
 
     # Form-wide errors that don't belong to a single input.
     sets_error = None
@@ -238,6 +250,11 @@ class WorkoutForm(FlaskForm):
         has_errors = bool(self.errors) or bool(self.sets_error)
         self.summary_error = MSG_SUMMARY if has_errors else None
         return not has_errors
+
+    def default_title(self):
+        """e.g. "Wednesday, Nov 4 — Lift". Used when the title is left blank."""
+        d = self.date.data
+        return f"{DAY_NAMES[d.weekday()]}, {MONTH_ABBR[d.month - 1]} {d.day} — {self.workout_type.data.title()}"
 
     def filled_sets(self):
         """The set rows the user actually typed into (fully blank rows are ignored)."""

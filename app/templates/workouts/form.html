@@ -12,8 +12,9 @@
     <input class="set-exercise" name="sets-{{ index }}-exercise" value="{{ exercise }}"
            list="exercise-options" placeholder="Exercise" aria-label="Exercise"{{ bad(row.exercise if row) }}
            autocomplete="off" autocapitalize="words">
-    <input name="sets-{{ index }}-weight_lb" value="{{ weight }}" type="number" step="any" min="0"
-           inputmode="decimal" placeholder="lb" aria-label="Weight (lb)"{{ bad(row.weight_lb if row) }}>
+    <input id="sets-{{ index }}-weight_lb" name="sets-{{ index }}-weight_lb" value="{{ weight }}" type="number" step="any" min="0"
+           inputmode="decimal" placeholder="lb" aria-label="Weight (lb)"{{ bad(row.weight_lb if row) }}
+           {%- if row and row.needs_weight %} class="needs-weight"{% endif %}>
     <input name="sets-{{ index }}-reps" value="{{ reps }}" type="number" min="1" step="1"
            inputmode="numeric" placeholder="reps" aria-label="Reps"{{ bad(row.reps if row) }}>
     <button type="button" class="secondary outline remove-set" data-remove-set aria-label="Remove set">✕</button>
@@ -28,6 +29,20 @@
 
 {% if form.summary_error %}
   <p class="form-summary" role="alert">{{ form.summary_error }}</p>
+{% endif %}
+
+{% if weight_warning %}
+  {% set first = (form.sets | selectattr("form.needs_weight") | first) %}
+  <article class="weight-warning" role="alert" id="weight-warning">
+    <p><strong>{{ weight_warning }}</strong></p>
+    <p class="muted">The highlighted sets will be saved as 0 lb.</p>
+    <div class="actions">
+      {# form="workout-form" sends everything you typed, plus "yes, I'm sure". #}
+      <button type="submit" form="workout-form" name="confirm_blank_weight" value="y">Save anyway</button>
+      <a href="#{{ first.form.weight_lb.id if first else 'set-rows' }}" role="button" class="secondary outline"
+         data-dismiss-warning>Go back and edit</a>
+    </div>
+  </article>
 {% endif %}
 
 <form method="post" novalidate id="workout-form">
@@ -64,8 +79,9 @@
   <section id="lift-fields" data-for-type="lift">
     <h2 style="margin: 0.5rem 0 0">Sets</h2>
     {% if form.sets_error %}<small class="form-error sets-error" id="sets-error">{{ form.sets_error }}</small>{% endif %}
+    {# Searchable dropdown: type to filter, pick a suggestion, or keep your own custom name. #}
     <datalist id="exercise-options">
-      {% for name in exercise_names %}<option value="{{ name }}">{% endfor %}
+      {% for name, bodyweight in exercise_options %}<option value="{{ name }}"{% if bodyweight %} label="Bodyweight"{% endif %}>{% endfor %}
     </datalist>
     <div id="set-rows">
       {% for row in form.sets %}
@@ -127,6 +143,16 @@
     if (!btn) return;
     btn.closest("[data-set-row]").remove();
     renumber();
+  });
+
+  // "Go back and edit" on the blank-weight warning: close it and jump to the first empty weight.
+  var dismiss = document.querySelector("[data-dismiss-warning]");
+  if (dismiss) dismiss.addEventListener("click", function (e) {
+    e.preventDefault();
+    document.getElementById("weight-warning").remove();  // so Enter can't mean "Save anyway"
+    var target = document.querySelector(".needs-weight") || rows.querySelector("input");
+    target.scrollIntoView({ block: "center" });
+    target.focus();
   });
 
   form.querySelectorAll("[data-type-radio]").forEach(function (r) { r.addEventListener("change", showType); });

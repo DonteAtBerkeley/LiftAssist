@@ -20,7 +20,7 @@ Defined in `app/models.py`; created by the migrations in `migrations/versions/`.
 | id | integer | primary key |
 | user_id | integer | required → `users.id` (deleting the user deletes their workouts) |
 | date | date | required |
-| title | varchar(120) | optional, e.g. "Push day" |
+| title | varchar(120) | optional, e.g. "Push day"; the form fills a blank one with day, date, and type, e.g. "Wednesday, Nov 4 — Lift" |
 | workout_type | varchar(10) | required; must be `'lift'` or `'run'` |
 | duration_min | integer | optional; ≥ 0 |
 | distance_mi | float | optional (runs only); ≥ 0 |
@@ -36,6 +36,9 @@ Defined in `app/models.py`; created by the migrations in `migrations/versions/`.
 | name | varchar(120) | required; unique **per user** (two users can each have "Back squat") |
 | rep_min | integer | required, default 8; ≥ 1 |
 | rep_max | integer | required, default 12; ≥ rep_min |
+| is_bodyweight | boolean | required, default false. Copied from the built-in catalog (`app/catalog.py`) the first time the user logs that exercise; custom names are `false` (weighted). Added in migration `82ee7e891171`, which also tags existing exercises whose names match a bodyweight catalog entry. |
+
+The built-in exercise catalog (about 100 common exercises, each "weighted" or "bodyweight") lives in code, not in this table. It's only a list of suggestions: a row is created here when a user actually logs one. Names match ignoring case and extra spaces, so "bench press" and "Bench Press" are the same exercise, and a catalog exercise is saved with the catalog's spelling.
 
 ### sets — one set of one exercise inside one workout
 | Column | Type | Rules |
@@ -44,7 +47,7 @@ Defined in `app/models.py`; created by the migrations in `migrations/versions/`.
 | workout_id | integer | required → `workouts.id` (deleting the workout deletes its sets) |
 | exercise_id | integer | required → `exercises.id` (an exercise with logged sets can't be deleted) |
 | set_number | integer | required; ≥ 1 |
-| weight_lb | float | required; ≥ 0 (0 = bodyweight) |
+| weight_lb | float | required; ≥ 0. A blank weight is saved as 0: silently for bodyweight exercises, and only after a "Save anyway" confirmation for weighted ones |
 | reps | integer | required; ≥ 1 |
 
 ### stars — "I starred this workout" (junction table)
