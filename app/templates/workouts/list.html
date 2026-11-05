@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "workouts/_macros.html" import summary, title %}
+{% from "workouts/_macros.html" import card %}
 {% block title %}Workouts · LiftAssist{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -8,16 +8,7 @@
 </div>
 
 {% for w in workouts %}
-  <a class="card" href="{{ url_for('workouts.detail', workout_id=w.id) }}">
-    <article>
-      <div class="card-top">
-        <small class="muted">{{ w.date.strftime('%a, %b %-d, %Y') }}</small>
-        <span class="badge">{{ w.workout_type }}</span>
-      </div>
-      <p class="card-title">{{ title(w) }}</p>
-      <p class="summary">{{ summary(w) }}</p>
-    </article>
-  </a>
+  {{ card(w, starred) }}
 {% else %}
   <article>
     <p>No workouts yet.</p>

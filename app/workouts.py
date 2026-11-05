@@ -197,9 +197,14 @@ def new():
 @bp.route("/<int:workout_id>")
 @login_required
 def detail(workout_id):
+    from .stars import starred_ids  # local import: stars.py imports this module
+
     workout = _get_own_workout(workout_id)
     return render_template(
-        "workouts/detail.html", workout=workout, groups=group_sets_by_exercise(workout.sets)
+        "workouts/detail.html",
+        workout=workout,
+        groups=group_sets_by_exercise(workout.sets),
+        starred=starred_ids(),
     )
 
 

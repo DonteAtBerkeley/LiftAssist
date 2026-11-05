@@ -45,10 +45,12 @@ def create_app(test_config=None):
     from . import models  # noqa: F401  (registers tables with SQLAlchemy)
     from .auth import bp as auth_bp
     from .main import bp as main_bp
+    from .stars import bp as stars_bp
     from .workouts import bp as workouts_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(workouts_bp)
+    app.register_blueprint(stars_bp)
 
     return app
