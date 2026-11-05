@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "workouts/_macros.html" import summary, title %}
+{% block title %}Workouts · LiftAssist{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Workouts</h1>
+  <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
+</div>
+
+{% for w in workouts %}
+  <a class="card" href="{{ url_for('workouts.detail', workout_id=w.id) }}">
+    <article>
+      <div class="card-top">
+        <small class="muted">{{ w.date.strftime('%a, %b %-d, %Y') }}</small>
+        <span class="badge">{{ w.workout_type }}</span>
+      </div>
+      <p class="card-title">{{ title(w) }}</p>
+      <p class="summary">{{ summary(w) }}</p>
+    </article>
+  </a>
+{% else %}
+  <article>
+    <p>No workouts yet.</p>
+    <a href="{{ url_for('workouts.new') }}" role="button">Log your first workout</a>
+  </article>
+{% endfor %}
+{% endblock %}

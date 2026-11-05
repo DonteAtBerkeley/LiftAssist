@@ -1,0 +1,12 @@
+{% macro num(x) %}{{ '%g' % x }}{% endmacro %}
+
+{% macro summary(w) -%}
+  {%- if w.workout_type == 'run' -%}
+    {{ num(w.distance_mi) ~ ' mi' if w.distance_mi is not none else 'No distance logged' }}
+  {%- else -%}
+    {{ w.sets|length }} set{{ '' if w.sets|length == 1 else 's' }}
+  {%- endif -%}
+  {%- if w.duration_min %} · {{ w.duration_min }} min{% endif -%}
+{%- endmacro %}
+
+{% macro title(w) %}{{ w.title or ('Run' if w.workout_type == 'run' else 'Lift') }}{% endmacro %}
