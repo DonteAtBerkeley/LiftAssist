@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from flask_login import UserMixin
+import sqlalchemy as sa
 from sqlalchemy import CheckConstraint, UniqueConstraint, event
 from sqlalchemy.engine import Engine
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -102,6 +103,9 @@ class Exercise(db.Model):
     name = db.Column(db.String(120), nullable=False)
     rep_min = db.Column(db.Integer, nullable=False, default=8, server_default="8")
     rep_max = db.Column(db.Integer, nullable=False, default=12, server_default="12")
+    # True for exercises done without added weight (push-ups, pull-ups...). Copied from the
+    # built-in catalog (app/catalog.py) when the user first logs the exercise; custom names are weighted.
+    is_bodyweight = db.Column(db.Boolean, nullable=False, default=False, server_default=sa.false())
 
     user = db.relationship("User", back_populates="exercises")
     sets = db.relationship("Set", back_populates="exercise")

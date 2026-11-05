@@ -70,39 +70,41 @@ def test_create_lift_with_sets(client, user_a):
     )
     assert w.distance_mi is None
     assert [(s.set_number, s.exercise.name, s.weight_lb, s.reps) for s in w.sets] == [
-        (1, "Back squat", 185, 5),
-        (2, "Back squat", 185, 5),
+        (1, "Back Squat", 185, 5),
+        (2, "Back Squat", 185, 5),
         (3, "Lunge", 50, 10),
     ]
     # Typing a new name created the exercise for this user; case/spacing variants reuse it.
+    # Catalog exercises take the catalog's spelling ("Back squat" -> "Back Squat").
     names = db.session.execute(db.select(Exercise.name).filter_by(user_id=user_a.id)).scalars().all()
-    assert sorted(names) == ["Back squat", "Lunge"]
+    assert sorted(names) == ["Back Squat", "Lunge"]
 
 
 def test_existing_exercise_reused_and_offered_for_autocomplete(client, user_a):
-    create(client, lift_data())
-    create(client, lift_data(**{"sets-0-exercise": "LUNGE"}))
-    assert db.session.execute(db.select(db.func.count(Exercise.id))).scalar() == 2
+    create(client, lift_data(**{"sets-2-exercise": "Zercher carry"}))  # a custom name
+    create(client, lift_data(**{"sets-0-exercise": "ZERCHER CARRY"}))
+    names = db.session.execute(db.select(Exercise.name)).scalars().all()
+    assert sorted(names) == ["Back Squat", "Lunge", "Zercher carry"]  # "ZERCHER CARRY" reused it
     r = client.get("/workouts/new")
-    assert b'<option value="Back squat">' in r.data
-    assert b'<option value="Lunge">' in r.data
+    assert b'<option value="Zercher carry">' in r.data  # my custom exercise is offered
+    assert r.data.count(b'value="Back Squat"') == 1  # mine and the catalog's aren't both listed
 
 
-def test_blank_set_rows_ignored_and_blank_weight_is_bodyweight(client, user_a):
+def test_blank_set_rows_ignored_and_blank_weight_on_bodyweight_exercise_is_0(client, user_a):
     wid = create(client, lift_data(**{
         "sets-1-exercise": "", "sets-1-weight_lb": "", "sets-1-reps": "",  # empty row
         "sets-2-exercise": "Pull-up", "sets-2-weight_lb": "", "sets-2-reps": "8",
     }))
     w = db.session.get(Workout, wid)
     assert [(s.set_number, s.exercise.name, s.weight_lb) for s in w.sets] == [
-        (1, "Back squat", 185), (2, "Pull-up", 0),
+        (1, "Back Squat", 185), (2, "Pull-Up", 0),
     ]
 
 
 def test_set_with_exercise_but_no_reps_is_not_saved(client, user_a):
     r = client.post("/workouts/new", data=lift_data(**{"sets-0-reps": ""}))
     assert r.status_code == 200
-    assert b"Reps are required." in r.data
+    assert b"How many reps?" in r.data
     assert db.session.execute(db.select(db.func.count(Workout.id))).scalar() == 0
 
 
@@ -137,7 +139,7 @@ def test_detail_groups_sets_by_exercise(client, user_a):
     }))
     body = client.get(f"/workouts/{wid}").data.decode()
     assert body.count("<h3") == 3  # two exercise groups + Notes
-    assert body.index("Back squat") < body.index("195 lb") < body.index("Lunge")
+    assert body.index("Back Squat") < body.index("195 lb") < body.index("Lunge")
     assert "Felt strong" in body and "4/5" in body and "60 min" in body
 
 
@@ -159,7 +161,7 @@ def test_edit_prefills_and_updates_sets(client, user_a):
     w = db.session.get(Workout, wid)
     assert w.title == "Leg Day (edited)"
     assert [(s.set_number, s.exercise.name) for s in w.sets] == [
-        (1, "Back squat"), (2, "Lunge"), (3, "Leg press")
+        (1, "Back Squat"), (2, "Lunge"), (3, "Leg Press")
     ]
     assert db.session.execute(db.select(db.func.count(Set.id))).scalar() == 3  # old sets gone
 
@@ -189,13 +191,14 @@ def test_delete_asks_first_then_deletes(client, user_a):
 
 def test_other_users_workout_is_404_everywhere(client, user_a):
     """PLAN.md test 1: User A logs "Leg Day"; User B sees an empty list and gets 404 on its URLs."""
-    wid = create(client, lift_data())
+    wid = create(client, lift_data(**{"sets-2-exercise": "Zercher carry"}))
     client.post("/logout")
     signup(client, "b@example.com")
+    assert b"Zercher carry" not in client.get("/workouts/new").data  # ...but A's custom ones aren't
 
     home = client.get("/")
     assert b"Leg Day" not in home.data and b"No workouts yet." in home.data
-    assert b"Back squat" not in client.get("/workouts/new").data  # A's exercises aren't offered
+    assert b"Back Squat" in client.get("/workouts/new").data  # the catalog is offered to everyone...
 
     assert client.get(f"/workouts/{wid}").status_code == 404
     assert client.get(f"/workouts/{wid}/edit").status_code == 404
@@ -214,8 +217,8 @@ def test_new_exercise_names_are_per_user(client, user_a):
     signup(client, "b@example.com")
     create(client, lift_data())
     b = db.session.execute(db.select(User).filter_by(email="b@example.com")).scalar_one()
-    # B got their own "Back squat", not A's.
+    # B got their own "Back Squat", not A's.
     owners = db.session.execute(
-        db.select(Exercise.user_id).filter_by(name="Back squat")
+        db.select(Exercise.user_id).filter_by(name="Back Squat")
     ).scalars().all()
     assert sorted(owners) == sorted([user_a.id, b.id])

@@ -10,8 +10,8 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
-from . import db
-from .forms import WorkoutForm
+from . import catalog, db
+from .forms import MSG_BLANK_WEIGHT, WorkoutForm
 from .models import Exercise, Set, Workout
 
 bp = Blueprint("workouts", __name__, url_prefix="/workouts")
@@ -38,27 +38,76 @@ def _get_own_workout(workout_id):
     return workout
 
 
-def _own_exercise_names():
+def _own_exercises():
     return db.session.execute(
-        db.select(Exercise.name).filter_by(user_id=current_user.id).order_by(Exercise.name)
+        db.select(Exercise).filter_by(user_id=current_user.id).order_by(Exercise.name)
     ).scalars().all()
 
 
+def exercise_options():
+    """What the exercise dropdown suggests: [(name, is_bodyweight)], sorted by name.
+
+    Your own exercises plus the built-in catalog. If you already have a catalog
+    exercise (any capitalization), your version is shown instead of a duplicate.
+    """
+    options = {catalog.normalize(e.name): (e.name, e.is_bodyweight) for e in _own_exercises()}
+    for name, kind in catalog.CATALOG:
+        options.setdefault(catalog.normalize(name), (name, kind == catalog.BODYWEIGHT))
+    return sorted(options.values(), key=lambda o: o[0].lower())
+
+
+def _find_own_exercise(name):
+    return db.session.execute(
+        db.select(Exercise).filter(
+            Exercise.user_id == current_user.id,
+            func.lower(Exercise.name) == catalog.normalize(name),
+        )
+    ).scalar()
+
+
 def _get_or_create_exercise(name, cache):
-    """Find the user's exercise by name (ignoring case), or create it for them."""
-    name = " ".join(name.split())  # trim and collapse inner spaces
-    key = name.lower()
+    """Find the user's exercise by name (ignoring case and extra spaces), or create it for them.
+
+    A new exercise that's in the catalog takes the catalog's spelling and bodyweight tag;
+    a custom name is kept as typed and counts as weighted.
+    """
+    key = catalog.normalize(name)
     if key not in cache:
-        exercise = db.session.execute(
-            db.select(Exercise).filter(
-                Exercise.user_id == current_user.id, func.lower(Exercise.name) == key
-            )
-        ).scalar()
+        exercise = _find_own_exercise(name)
         if exercise is None:
-            exercise = Exercise(user_id=current_user.id, name=name)
+            found = catalog.lookup(name)
+            exercise = Exercise(
+                user_id=current_user.id,
+                name=found[0] if found else " ".join(name.split()),
+                is_bodyweight=found[1] if found else False,
+            )
             db.session.add(exercise)
         cache[key] = exercise
     return cache[key]
+
+
+def _is_bodyweight(name):
+    """Your saved tag for this exercise if you've logged it before, else the catalog's, else weighted."""
+    exercise = _find_own_exercise(name)
+    if exercise is not None:
+        return exercise.is_bodyweight
+    found = catalog.lookup(name)
+    return bool(found and found[1])
+
+
+def _flag_blank_weights(form):
+    """Mark set rows with a blank weight on a *weighted* exercise. Returns True if any were found.
+
+    Blank weight on a bodyweight exercise is fine (saved as 0). On a weighted
+    exercise it's probably a mistake, so we ask before saving.
+    """
+    if form.workout_type.data != "lift" or form.confirm_blank_weight.data:
+        return False
+    flagged = False
+    for row in form.filled_sets():
+        row.needs_weight = row.weight_is_blank() and not _is_bodyweight(row.exercise.data)
+        flagged = flagged or row.needs_weight
+    return flagged
 
 
 # --- Form <-> workout --------------------------------------------------------
@@ -66,7 +115,7 @@ def _get_or_create_exercise(name, cache):
 def _apply_form(form, workout):
     """Copy the submitted form onto the workout and rebuild its sets."""
     workout.date = form.date.data
-    workout.title = (form.title.data or "").strip() or None
+    workout.title = form.title.data or form.default_title()
     workout.workout_type = form.workout_type.data
     workout.duration_min = form.duration_min.data
     workout.effort = form.effort.data
@@ -86,7 +135,7 @@ def _apply_form(form, workout):
                 Set(
                     exercise=_get_or_create_exercise(row.exercise.data, cache),
                     set_number=number,
-                    weight_lb=row.weight_lb.data or 0,  # blank weight = bodyweight
+                    weight_lb=row.weight_lb.data or 0,  # blank weight is saved as 0 lb
                     reps=row.reps.data,
                 )
             )
@@ -99,7 +148,7 @@ def _prefill_sets(form, workout):
         )
 
 
-def _render_form(form, workout=None):
+def _render_form(form, workout=None, weight_warning=None):
     # Always show at least one empty set row so the user can start typing.
     if not form.sets.entries:
         form.sets.append_entry()
@@ -107,8 +156,23 @@ def _render_form(form, workout=None):
         "workouts/form.html",
         form=form,
         workout=workout,
-        exercise_names=_own_exercise_names(),
+        exercise_options=exercise_options(),
+        weight_warning=weight_warning,
     )
+
+
+def _save_or_rerender(form, workout, message):
+    """Shared POST handling for new and edit. Nothing is saved unless every check passes."""
+    if not form.validate_on_submit():
+        return _render_form(form, workout if workout.id else None)
+    if _flag_blank_weights(form):
+        return _render_form(form, workout if workout.id else None, weight_warning=MSG_BLANK_WEIGHT)
+    if workout.id is None:
+        db.session.add(workout)
+    _apply_form(form, workout)
+    db.session.commit()
+    flash(message)
+    return redirect(url_for("workouts.detail", workout_id=workout.id))
 
 
 def group_sets_by_exercise(sets):
@@ -125,13 +189,8 @@ def group_sets_by_exercise(sets):
 @login_required
 def new():
     form = WorkoutForm()
-    if form.validate_on_submit():
-        workout = Workout(user_id=current_user.id)
-        db.session.add(workout)
-        _apply_form(form, workout)
-        db.session.commit()
-        flash("Workout saved.")
-        return redirect(url_for("workouts.detail", workout_id=workout.id))
+    if request.method == "POST":
+        return _save_or_rerender(form, Workout(user_id=current_user.id), "Workout saved.")
     return _render_form(form)
 
 
@@ -153,14 +212,8 @@ def edit(workout_id):
         form.sets.entries = []  # obj= can't fill the set rows; do it by hand below
         form.sets.last_index = -1
         _prefill_sets(form, workout)
-    else:
-        form = WorkoutForm()
-        if form.validate_on_submit():
-            _apply_form(form, workout)
-            db.session.commit()
-            flash("Workout updated.")
-            return redirect(url_for("workouts.detail", workout_id=workout.id))
-    return _render_form(form, workout)
+        return _render_form(form, workout)
+    return _save_or_rerender(WorkoutForm(), workout, "Workout updated.")
 
 
 @bp.route("/<int:workout_id>/delete", methods=["GET", "POST"])
