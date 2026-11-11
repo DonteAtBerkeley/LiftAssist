@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% from "workouts/_macros.html" import summary, title %}
 {% block title %}Delete workout? · LiftAssist{% endblock %}
+{% block page_class %}narrow{% endblock %}
 {% block content %}
 <article>
   <h1>Are you sure?</h1>
   <p>This will permanently delete <strong>{{ title(workout) }}</strong>
      ({{ workout.date.strftime('%b %-d, %Y') }}, {{ summary(workout) }}). This can't be undone.</p>
   <div class="actions">
-    <a href="{{ url_for('workouts.detail', workout_id=workout.id) }}" role="button" class="secondary outline">Cancel</a>
+    <a href="{{ url_for('workouts.detail', workout_id=workout.id) }}" role="button" class="secondary">Cancel</a>
     <form method="post" action="{{ url_for('workouts.delete', workout_id=workout.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="danger">Yes, delete it</button>

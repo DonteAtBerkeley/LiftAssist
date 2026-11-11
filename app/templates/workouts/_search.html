@@ -1,0 +1,76 @@
+{# Search / filter / sort bar. A plain GET form, so every choice lands in the URL
+   (?q=squat&type=lift&sort=effort): bookmarkable, and the back button works.
+   The fields are filled in from `filters` so the current choices stay visible; From/To
+   are empty unless the URL sets them, and an empty date never filters anything.
+
+   Layout: row 1 = search box + Search button. Row 2 = Type, Sort, From, To, Apply, Clear
+   (one row from tablet width up; stacked behind a "Filters" toggle on phones).
+   <search> marks the landmark without Pico's [role=search] group styling. #}
+{% macro search_bar(filters, types, sorts, action, count) %}
+<search class="search-bar filter-bar">
+<form method="get" action="{{ action }}" data-search-form>
+  <div class="search-row">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Search title, notes, exercise…"
+           aria-label="Search workouts" maxlength="100" autocomplete="off">
+    <button type="submit">Search</button>
+  </div>
+
+  {# No name, so it's never sent with the form. Starts open on phones when a filter is set. #}
+  <input type="checkbox" id="filters-toggle" class="filters-toggle-box"{% if filters.filter_count %} checked{% endif %}>
+  <label for="filters-toggle" class="filters-toggle">Filters{% if filters.filter_count %} ({{ filters.filter_count }}){% endif %}</label>
+
+  <div class="filter-row">
+    <label>Type
+      <select name="type">
+        {% for value, label in types.items() %}
+          <option value="{{ value }}"{% if filters.type == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Sort
+      <select name="sort">
+        {% for value, label in sorts.items() %}
+          <option value="{{ value }}"{% if filters.sort == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>From
+      <input type="date" name="from" autocomplete="off"
+             value="{{ filters.date_from.isoformat() if filters.date_from else '' }}">
+    </label>
+    <label>To
+      <input type="date" name="to" autocomplete="off"
+             value="{{ filters.date_to.isoformat() if filters.date_to else '' }}">
+    </label>
+    <div class="filter-buttons">
+      <button type="submit">Apply</button>
+      <a href="{{ action }}" role="button" class="secondary">Clear</a>
+    </div>
+  </div>
+
+  {% if filters.active %}
+    <p class="search-status"><small class="muted">{{ count }} workout{{ '' if count == 1 else 's' }} found</small></p>
+  {% endif %}
+</form>
+</search>
+<script>
+  // Keep URLs short: leave empty boxes (and the default sort) out of the query string,
+  // e.g. "/?q=squat" instead of "/?q=squat&type=&sort=newest&from=&to=".
+  document.querySelectorAll("[data-search-form]").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      form.querySelectorAll("[name]").forEach(function (el) {
+        if (el.value === "" || (el.name === "sort" && el.value === "newest")) el.disabled = true;
+      });
+      setTimeout(function () { form.querySelectorAll("[name]").forEach(function (el) { el.disabled = false; }); });
+    });
+  });
+</script>
+{% endmacro %}
+
+{# Shown when search/filters hide everything. #}
+{% macro no_matches(action) %}
+<article>
+  <p>No workouts match — try a different search.</p>
+  <a href="{{ action }}" role="button" class="secondary">Clear search</a>
+</article>
+{% endmacro %}

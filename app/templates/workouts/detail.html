@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "workouts/_macros.html" import num, star_button, title %}
 {% block title %}{{ title(workout) }} · LiftAssist{% endblock %}
+{% block page_class %}narrow{% endblock %}
 {% block content %}
 <p><a href="{{ url_for('main.home') }}">← All workouts</a></p>
 
@@ -45,6 +46,6 @@
 
 <div class="actions">
   <a href="{{ url_for('workouts.edit', workout_id=workout.id) }}" role="button">Edit</a>
-  <a href="{{ url_for('workouts.delete', workout_id=workout.id) }}" role="button" class="secondary outline">Delete</a>
+  <a href="{{ url_for('workouts.delete', workout_id=workout.id) }}" role="button" class="secondary">Delete</a>
 </div>
 {% endblock %}

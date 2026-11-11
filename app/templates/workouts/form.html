@@ -17,13 +17,14 @@
            {%- if row and row.needs_weight %} class="needs-weight"{% endif %}>
     <input name="sets-{{ index }}-reps" value="{{ reps }}" type="number" min="1" step="1"
            inputmode="numeric" placeholder="reps" aria-label="Reps"{{ bad(row.reps if row) }}>
-    <button type="button" class="secondary outline remove-set" data-remove-set aria-label="Remove set">✕</button>
+    <button type="button" class="secondary remove-set" data-remove-set aria-label="Remove set">✕</button>
     {% if row %}{{ errors(row.exercise) }}{{ errors(row.weight_lb) }}{{ errors(row.reps) }}{% endif %}
   </div>
 {% endmacro %}
 
 {% macro val(f) %}{{ f.raw_data[0] if f.raw_data else ('%g' % f.data if f.data is not none else '') }}{% endmacro %}
 
+{% block page_class %}narrow{% endblock %}
 {% block content %}
 <h1>{{ 'Edit workout' if workout else 'New workout' }}</h1>
 
@@ -39,7 +40,7 @@
     <div class="actions">
       {# form="workout-form" sends everything you typed, plus "yes, I'm sure". #}
       <button type="submit" form="workout-form" name="confirm_blank_weight" value="y">Save anyway</button>
-      <a href="#{{ first.form.weight_lb.id if first else 'set-rows' }}" role="button" class="secondary outline"
+      <a href="#{{ first.form.weight_lb.id if first else 'set-rows' }}" role="button" class="secondary"
          data-dismiss-warning>Go back and edit</a>
     </div>
   </article>
@@ -95,11 +96,12 @@
   </section>
 
   {{ field(form.notes) }}
-  {{ form.submit() }}
+  <div class="actions">
+    {{ form.submit() }}
+    <a href="{{ url_for('workouts.detail', workout_id=workout.id) if workout else url_for('main.home') }}"
+       role="button" class="secondary">Cancel</a>
+  </div>
 </form>
-{% if workout %}
-  <p><a href="{{ url_for('workouts.detail', workout_id=workout.id) }}">Cancel</a></p>
-{% endif %}
 
 <template id="set-row-template">{{ set_row('__i__', '', '', '', '') }}</template>
 

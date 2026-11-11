@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from . import db
 from .models import Star, Workout
+from .search import SORTS, TYPES, apply_filters, read_filters
 from .workouts import _get_own_workout
 
 bp = Blueprint("stars", __name__)
@@ -72,14 +73,21 @@ def unstar(workout_id):
 @bp.route("/starred")
 @login_required
 def starred():
-    """Only the workouts I've starred, newest workout first."""
-    workouts = db.session.execute(
+    """Only the workouts I've starred, newest workout first. Same ?q=&type=&from=&to=&sort= as the list."""
+    filters = read_filters(request.args)
+    query = (
         db.select(Workout)
         .join(Star, Star.workout_id == Workout.id)
         .filter(Star.user_id == current_user.id, Workout.user_id == current_user.id)
         .options(selectinload(Workout.sets))
-        .order_by(Workout.date.desc(), Workout.id.desc())
-    ).scalars().all()
+    )
+    workouts = db.session.execute(apply_filters(query, filters)).scalars().all()
     return render_template(
-        "workouts/starred.html", workouts=workouts, starred={w.id for w in workouts}
+        "workouts/starred.html",
+        workouts=workouts,
+        starred={w.id for w in workouts},  # everything on this page is starred
+        filters=filters,
+        types=TYPES,
+        sorts=SORTS,
+        has_any=bool(workouts) or bool(starred_ids()),
     )
