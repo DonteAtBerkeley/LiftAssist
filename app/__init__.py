@@ -44,6 +44,7 @@ def create_app(test_config=None):
 
     from . import models  # noqa: F401  (registers tables with SQLAlchemy)
     from .auth import bp as auth_bp
+    from .dashboard import bp as dashboard_bp
     from .main import bp as main_bp
     from .stars import bp as stars_bp
     from .workouts import bp as workouts_bp
@@ -52,5 +53,11 @@ def create_app(test_config=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(workouts_bp)
     app.register_blueprint(stars_bp)
+    app.register_blueprint(dashboard_bp)
+
+    @app.template_filter("lb")
+    def format_lb(value):
+        """2500.0 -> "2,500" (volume is shown as a whole number of pounds)."""
+        return f"{round(value or 0):,}"
 
     return app
