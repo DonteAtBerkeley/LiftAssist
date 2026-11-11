@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}My PRs · LiftAssist{% endblock %}
+
+{% macro when(entry) %}<a href="{{ url_for('workouts.detail', workout_id=entry.workout_id) }}">{{ entry.date.strftime('%b %-d, %Y') }}</a>{% endmacro %}
+
+{% macro run_card(entry, label, hint) %}
+  <article class="stat">
+    <small>{{ label }}</small>
+    {% if entry %}
+      <strong>{{ entry.display }}</strong>
+      <span class="muted">{{ when(entry) }}</span>
+    {% else %}
+      <strong>—</strong>
+      <span class="muted">{{ hint }}</span>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <h1>My PRs</h1>
+  <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
+</div>
+
+{% if not summary.exercises and not summary.pace and not summary.distance %}
+  <article class="dash-empty">
+    <p><strong>🏆 No PRs yet.</strong></p>
+    <p class="muted">Log a lift, or a run of 1 mile or more, and your bests will show up here. Then go beat them.</p>
+    <a href="{{ url_for('workouts.new') }}" role="button">Log a workout</a>
+  </article>
+{% else %}
+  <section class="stats pr-runs" aria-label="Run PRs">
+    {{ run_card(summary.pace, 'Fastest pace', 'Log a run of 1+ mile with a duration') }}
+    {{ run_card(summary.distance, 'Longest run', 'Log a run of 1+ mile') }}
+  </section>
+
+  {% if summary.exercises %}
+    <article class="pr-list">
+      {% for row in summary.exercises %}
+        <section class="pr-row">
+          <h2 class="pr-name">{{ row.name }}</h2>
+          <div class="pr-metrics">
+            {% for m in row.metrics %}
+              <div class="pr-metric">
+                <small>{{ m.label }}</small>
+                <strong>{{ m.display }}</strong>
+                <span class="muted">{{ when(m) }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    </article>
+  {% else %}
+    <p class="muted">No lifting PRs yet. Log a lift and it will show up here.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -29,7 +29,11 @@
         <thead><tr><th>Set</th><th>Weight</th><th>Reps</th></tr></thead>
         <tbody>
           {% for s in sets %}
-            <tr><td>{{ loop.index }}</td><td>{{ num(s.weight_lb) }} lb</td><td>{{ s.reps }}</td></tr>
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ num(s.weight_lb) }} lb</td>
+              <td>{{ s.reps }}{% if s.id in pr_badges %}{% set pr_label = 'All-time PR: ' ~ pr_badges[s.id]|join(', ') %} <span class="pr-badge" role="img" aria-label="{{ pr_label }}" title="{{ pr_label }}">🏆</span>{% endif %}</td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>

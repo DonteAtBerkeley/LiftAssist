@@ -86,7 +86,9 @@
     .nav-email { font-size: 0.875rem; color: var(--pico-muted-color); overflow-wrap: anywhere; }
     @media (max-width: 640px) {
       .nav-email, .nav-new { display: none; }  /* pages with a list have their own + New button */
-      nav li { --pico-nav-element-spacing-horizontal: 0.5rem; }
+      nav li { --pico-nav-element-spacing-horizontal: 0.3rem; }
+      nav a, nav .link-button { font-size: 0.875rem; }
+      .brand { font-size: 1rem; }
     }
 
     /* ---- Controls: one size, one radius, everywhere ---- */
@@ -113,6 +115,7 @@
     /* ---- Messages ---- */
     .flash { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem;
              background: var(--pico-card-background-color); border-left: 4px solid var(--accent); }
+    .flash-pr { background: rgba(242, 107, 29, 0.15); font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
     .form-error { color: var(--pico-del-color); font-size: 0.875rem; margin-top: -0.5rem; display: block; }
     .form-summary { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem;
                     border-left: 4px solid var(--pico-del-color); background: var(--pico-card-background-color);
@@ -233,6 +236,24 @@
     .chart-table summary { font-size: 0.875rem; color: var(--pico-primary); }
     .dash-empty { text-align: center; padding: 2rem 1rem; }
 
+    /* ---- PRs: name above the numbers on phones, one line per exercise from tablet up ---- */
+    .stats.pr-runs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    article.pr-list { margin: 0; padding: 0 1rem; }
+    .pr-row { margin: 0; padding: 0.9rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
+    .pr-row:last-child { border-bottom: 0; }
+    h2.pr-name { font-size: 1.05rem; margin: 0 0 0.5rem; overflow-wrap: anywhere; }
+    .pr-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .pr-metric { display: flex; flex-direction: column; min-width: 0; }
+    .pr-metric small { font-weight: 600; color: var(--pico-muted-color); }
+    .pr-metric strong { font-size: 1.3rem; line-height: 1.2; color: var(--accent-text); }
+    .pr-metric .muted { font-size: 0.8rem; }
+    @media (min-width: 768px) {
+      .pr-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1rem; align-items: center; }
+      h2.pr-name { margin: 0; }
+    }
+    .pr-badge { display: inline-block; margin-left: 0.25rem; padding: 0 0.35rem; border-radius: 999px; font-size: 0.85rem;
+                background: rgba(242, 107, 29, 0.15); box-shadow: inset 0 0 0 1px var(--accent); }
+
     /* ---- Detail page ---- */
     .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
     .meta strong { display: block; font-size: 1.25rem; }
@@ -247,6 +268,7 @@
         {% if current_user.is_authenticated %}
           <li><a href="{{ url_for('dashboard.dashboard') }}"{% if request.endpoint == 'dashboard.dashboard' %} aria-current="page"{% endif %}>Dashboard</a></li>
           <li><a href="{{ url_for('stars.starred') }}"{% if request.endpoint == 'stars.starred' %} aria-current="page"{% endif %}>Starred</a></li>
+          <li><a href="{{ url_for('prs.my_prs') }}"{% if request.endpoint == 'prs.my_prs' %} aria-current="page"{% endif %}>My PRs</a></li>
           <li class="nav-new"><a href="{{ url_for('workouts.new') }}">+ New</a></li>
           <li class="nav-email">{{ current_user.email }}</li>
           <li>
@@ -264,8 +286,8 @@
   </header>
   <main class="container">
     <div class="{% block page_class %}{% endblock %}">
-    {% with messages = get_flashed_messages() %}
-      {% for message in messages %}<div class="flash" role="status">{{ message }}</div>{% endfor %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}<div class="flash{{ ' flash-pr' if category == 'pr' }}" role="status">{{ message }}</div>{% endfor %}
     {% endwith %}
     {% block content %}{% endblock %}
     </div>

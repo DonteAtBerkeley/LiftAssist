@@ -10,7 +10,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
-from . import catalog, db
+from . import catalog, db, prs
 from .forms import MSG_BLANK_WEIGHT, WorkoutForm
 from .models import Exercise, Set, Workout
 from .search import Filters, apply_filters
@@ -180,11 +180,14 @@ def _save_or_rerender(form, workout, message):
         return _render_form(form, workout if workout.id else None)
     if _flag_blank_weights(form):
         return _render_form(form, workout if workout.id else None, weight_warning=MSG_BLANK_WEIGHT)
+    before = prs.take_snapshot(current_user.id, workout.id)  # the records as they stand pre-save
     if workout.id is None:
         db.session.add(workout)
     _apply_form(form, workout)
     db.session.commit()
     flash(message)
+    for text in prs.pr_messages(prs.new_prs(current_user.id, workout.id, before)):
+        flash(text, "pr")
     return redirect(url_for("workouts.detail", workout_id=workout.id))
 
 
@@ -218,6 +221,7 @@ def detail(workout_id):
         workout=workout,
         groups=group_sets_by_exercise(workout.sets),
         starred=starred_ids(),
+        pr_badges=prs.set_badges(current_user.id, workout.id),
     )
 
 
