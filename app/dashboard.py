@@ -5,7 +5,7 @@ from datetime import date
 from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
-from . import stats
+from . import stats, streaks
 from .workouts import has_any_workouts
 
 bp = Blueprint("dashboard", __name__)
@@ -14,15 +14,17 @@ bp = Blueprint("dashboard", __name__)
 @bp.route("/dashboard")
 @login_required
 def dashboard():
-    if not has_any_workouts():
-        return render_template("dashboard.html", empty=True)
-
     today = date.today()
     uid = current_user.id  # every stat below is for the logged-in user only
+    streak = streaks.streak_summary(uid, today)
+    if not has_any_workouts():
+        return render_template("dashboard.html", empty=True, streak=streak)
+
     weeks = stats.weekly_series(uid, today)
     return render_template(
         "dashboard.html",
         empty=False,
+        streak=streak,
         today=today,
         workouts_this_month=stats.workouts_this_month(uid, today),
         volume_this_month=stats.volume_this_month(uid, today),

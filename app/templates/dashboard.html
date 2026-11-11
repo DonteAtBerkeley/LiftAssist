@@ -6,6 +6,24 @@
   {% if not empty %}<a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>{% endif %}
 </div>
 
+<article class="streak-card" aria-label="Your weekly streak">
+  <div>
+    <p class="streak-current">🔥 Current streak: {{ streak.current }} week{{ '' if streak.current == 1 else 's' }}</p>
+    <p class="streak-longest muted">Longest: {{ streak.longest }} week{{ '' if streak.longest == 1 else 's' }}</p>
+  </div>
+  <div class="streak-week">
+    <p>This week: {{ streak.this_week }} / {{ streak.threshold }} workouts</p>
+    <progress value="{{ streak.this_week }}" max="{{ streak.threshold }}" aria-label="Workouts this week"></progress>
+  </div>
+  {% if streak.current == 0 %}
+    {% set remaining = streak.threshold - streak.this_week %}
+    <p class="streak-hint">
+      {% if streak.this_week == 0 %}Log {{ streak.threshold }} workouts this week to start a streak.
+      {% else %}Log {{ remaining }} more workout{{ '' if remaining == 1 else 's' }} this week to start a streak.{% endif %}
+    </p>
+  {% endif %}
+</article>
+
 {% if empty %}
   <article class="dash-empty">
     <p><strong>Nothing to chart yet.</strong></p>
