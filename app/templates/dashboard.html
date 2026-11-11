@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · LiftAssist{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Dashboard</h1>
+  {% if not empty %}<a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>{% endif %}
+</div>
+
+{% if empty %}
+  <article class="dash-empty">
+    <p><strong>Nothing to chart yet.</strong></p>
+    <p class="muted">Log your first workout and your weekly volume, miles, and monthly stats will show up here.</p>
+    <a href="{{ url_for('workouts.new') }}" role="button">Log your first workout</a>
+  </article>
+{% else %}
+
+<section class="stats" aria-label="Your stats">
+  <article class="stat">
+    <small>Workouts this month</small>
+    <strong>{{ workouts_this_month }}</strong>
+    <span class="muted">{{ today.strftime('%B') }}</span>
+  </article>
+  <article class="stat">
+    <small>Volume this month</small>
+    <strong data-stat="volume-this-month">{{ volume_this_month|lb }} <span class="unit">lb</span></strong>
+    <span class="muted">weight × reps, all sets</span>
+  </article>
+  <article class="stat">
+    <small>Avg workouts / week</small>
+    <strong>{{ '%.1f' % avg_per_week }}</strong>
+    <span class="muted">last 8 weeks</span>
+  </article>
+  <article class="stat">
+    <small>Best month</small>
+    {% if best_month %}
+      <strong>{{ best_month[0].strftime('%b %Y') }}</strong>
+      <span class="muted">{{ best_month[1]|lb }} lb</span>
+    {% else %}
+      <strong>—</strong>
+      <span class="muted">no lifts logged yet</span>
+    {% endif %}
+  </article>
+</section>
+
+<article class="chart-card">
+  <header>
+    <h2>Last 8 weeks</h2>
+    <p class="chart-legend">
+      <span class="key key-volume"></span> Volume (lb)
+      <span class="key key-miles"></span> Miles run
+    </p>
+  </header>
+  <div class="chart-box">
+    <canvas id="weekly-chart" role="img"
+            aria-label="Weekly volume in pounds (bars) and miles run (line) for the last 8 weeks"></canvas>
+  </div>
+  <details class="chart-table">
+    <summary>Show as a table</summary>
+    <table>
+      <thead><tr><th>Week of</th><th>Volume (lb)</th><th>Miles</th></tr></thead>
+      <tbody>
+        {% for w in weeks %}
+          <tr><td>{{ w.week_start.strftime('%b %-d') }}</td><td>{{ w.volume|lb }}</td><td>{{ '%g' % w.miles }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</article>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  if (!window.Chart) return;  // CDN blocked: the table above still has the numbers
+  var data = {{ chart|tojson }};
+  var css = getComputedStyle(document.documentElement);
+  var ink = css.getPropertyValue("--pico-muted-color").trim() || "#6b7280";
+  var grid = css.getPropertyValue("--pico-muted-border-color").trim() || "rgba(0,0,0,0.1)";
+  var accent = "#F26B1D";
+  var neutral = css.getPropertyValue("--chart-neutral").trim() || "#4B5563";
+  var small = window.matchMedia("(max-width: 640px)").matches;
+
+  Chart.defaults.font.family = css.getPropertyValue("--pico-font-family").trim() || undefined;
+  Chart.defaults.color = ink;
+
+  new Chart(document.getElementById("weekly-chart"), {
+    data: {
+      labels: data.labels,
+      datasets: [
+        { type: "bar", label: "Volume (lb)", data: data.volume, yAxisID: "y",
+          backgroundColor: accent, borderRadius: 4, maxBarThickness: 40, order: 2 },
+        { type: "line", label: "Miles run", data: data.miles, yAxisID: "y1",
+          borderColor: neutral, backgroundColor: neutral, borderWidth: 2,
+          pointRadius: small ? 3 : 4, tension: 0, order: 1 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },  // our own legend sits above the chart
+        tooltip: { callbacks: { label: function (c) {
+          return c.dataset.yAxisID === "y"
+            ? " " + c.parsed.y.toLocaleString() + " lb"
+            : " " + c.parsed.y + " mi";
+        } } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } },
+        y: {
+          position: "left", beginAtZero: true, grid: { color: grid },
+          title: { display: !small, text: "Volume (lb)" },
+          ticks: { callback: function (v) { return v >= 1000 ? (v / 1000) + "k" : v; } }
+        },
+        y1: {
+          position: "right", beginAtZero: true, grid: { drawOnChartArea: false },
+          title: { display: !small, text: "Miles" },
+          ticks: { precision: 0 }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

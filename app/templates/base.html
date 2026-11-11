@@ -84,7 +84,10 @@
       color: var(--pico-primary); text-decoration: none; cursor: pointer; font-weight: 400;
     }
     .nav-email { font-size: 0.875rem; color: var(--pico-muted-color); overflow-wrap: anywhere; }
-    @media (max-width: 640px) { .nav-email { display: none; } }
+    @media (max-width: 640px) {
+      .nav-email, .nav-new { display: none; }  /* pages with a list have their own + New button */
+      nav li { --pico-nav-element-spacing-horizontal: 0.5rem; }
+    }
 
     /* ---- Controls: one size, one radius, everywhere ---- */
     input:not([type=checkbox], [type=radio]), select, button, [role=button], [type=submit] {
@@ -205,6 +208,31 @@
     .set-actions { margin: 0.75rem 0 1.5rem; }
     .set-actions button { width: auto; margin: 0; }
 
+    /* ---- Dashboard ---- */
+    :root { --chart-neutral: #4B5563; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme]) { --chart-neutral: #AEB6C2; } }
+    :root[data-theme=dark] { --chart-neutral: #AEB6C2; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    @media (min-width: 768px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; } }
+    article.stat { margin: 0; padding: 1rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+    .stat small { font-weight: 600; color: var(--pico-muted-color); }
+    .stat strong { font-size: 1.6rem; line-height: 1.15; overflow-wrap: anywhere; }
+    .stat .unit { font-size: 1rem; font-weight: 600; }
+    .stat .muted { font-size: 0.8rem; }
+    article.chart-card { margin: 0; padding: 1rem; }
+    .chart-card header { margin: 0 0 0.5rem; padding: 0; background: none; border: 0;
+                         display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+    .chart-card h2 { font-size: 1.15rem; margin: 0; }
+    .chart-legend { margin: 0; font-size: 0.875rem; color: var(--pico-muted-color); display: flex; align-items: center; gap: 0.4rem; }
+    .key { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; }
+    .key-volume { background: var(--accent); }
+    .key-miles { background: var(--chart-neutral); height: 3px; border-radius: 2px; width: 1rem; margin-left: 0.6rem; }
+    .chart-box { position: relative; height: 260px; }
+    @media (min-width: 768px) { .chart-box { height: 340px; } }
+    .chart-table { margin: 0.75rem 0 0; }
+    .chart-table summary { font-size: 0.875rem; color: var(--pico-primary); }
+    .dash-empty { text-align: center; padding: 2rem 1rem; }
+
     /* ---- Detail page ---- */
     .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
     .meta strong { display: block; font-size: 1.25rem; }
@@ -217,8 +245,9 @@
       <ul><li><a class="brand" href="{{ url_for('main.home') }}">LiftAssist</a></li></ul>
       <ul>
         {% if current_user.is_authenticated %}
+          <li><a href="{{ url_for('dashboard.dashboard') }}"{% if request.endpoint == 'dashboard.dashboard' %} aria-current="page"{% endif %}>Dashboard</a></li>
           <li><a href="{{ url_for('stars.starred') }}"{% if request.endpoint == 'stars.starred' %} aria-current="page"{% endif %}>Starred</a></li>
-          <li><a href="{{ url_for('workouts.new') }}">+ New</a></li>
+          <li class="nav-new"><a href="{{ url_for('workouts.new') }}">+ New</a></li>
           <li class="nav-email">{{ current_user.email }}</li>
           <li>
             <form method="post" action="{{ url_for('auth.logout') }}">
