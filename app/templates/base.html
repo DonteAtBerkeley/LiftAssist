@@ -254,6 +254,21 @@
     .pr-badge { display: inline-block; margin-left: 0.25rem; padding: 0 0.35rem; border-radius: 999px; font-size: 0.85rem;
                 background: rgba(242, 107, 29, 0.15); box-shadow: inset 0 0 0 1px var(--accent); }
 
+    /* ---- Streak: stacked on phones, numbers beside this week's progress from tablet up ---- */
+    article.streak-card { margin: 0 0 1rem; padding: 1rem; display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 768px) {
+      article.streak-card { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 2rem; align-items: center; }
+    }
+    .streak-current { margin: 0; font-size: 1.35rem; font-weight: 800; line-height: 1.2; }
+    .streak-longest { margin: 0.15rem 0 0; }
+    .streak-week p { margin: 0 0 0.35rem; font-weight: 600; }
+    .streak-week progress { --pico-progress-color: var(--accent); display: block; height: 0.75rem; margin: 0; }
+    .streak-hint { grid-column: 1 / -1; margin: 0; color: var(--accent-text); font-weight: 600; }
+    .page-title { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem 0.75rem; min-width: 0; }
+    @media (min-width: 768px) { .page-title { flex-direction: row; align-items: center; } }
+    .streak-badge { font-size: 0.875rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 999px; white-space: nowrap;
+                    background: rgba(242, 107, 29, 0.15); color: var(--accent-text); }
+
     /* ---- Detail page ---- */
     .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
     .meta strong { display: block; font-size: 1.25rem; }

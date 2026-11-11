@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from .search import SORTS, TYPES, read_filters
 from .stars import starred_ids
+from .streaks import streak_summary
 from .workouts import has_any_workouts, own_workouts
 
 bp = Blueprint("main", __name__)
@@ -23,4 +24,5 @@ def home():
         sorts=SORTS,
         # Only worth asking when the list is empty: "nothing matches" vs "nothing logged yet".
         has_any=bool(workouts) or has_any_workouts(),
+        streak=streak_summary(current_user.id),
     )

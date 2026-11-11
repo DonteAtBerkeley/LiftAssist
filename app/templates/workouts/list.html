@@ -4,7 +4,10 @@
 {% block title %}Workouts · LiftAssist{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>Workouts</h1>
+  <div class="page-title">
+    <h1>Workouts</h1>
+    {% if streak.current %}<span class="streak-badge">🔥 {{ streak.current }}-week streak</span>{% endif %}
+  </div>
   <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
 </div>
 
