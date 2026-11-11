@@ -46,6 +46,7 @@ def create_app(test_config=None):
     from .auth import bp as auth_bp
     from .dashboard import bp as dashboard_bp
     from .main import bp as main_bp
+    from .pr_views import bp as prs_bp
     from .stars import bp as stars_bp
     from .workouts import bp as workouts_bp
 
@@ -54,6 +55,7 @@ def create_app(test_config=None):
     app.register_blueprint(workouts_bp)
     app.register_blueprint(stars_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(prs_bp)
 
     @app.template_filter("lb")
     def format_lb(value):
