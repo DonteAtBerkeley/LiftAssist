@@ -125,10 +125,22 @@ def test_controls_keep_current_choices_and_clear_link(client):
     assert 'value="squat"' in body
     assert '<option value="lift" selected>' in body
     assert '<option value="effort" selected>' in body
-    assert 'value="2026-11-01"' in body
-    assert '<a href="/">Clear</a>' in body
+    assert 'name="from" autocomplete="off"\n             value="2026-11-01"' in body
+    assert 'name="to" autocomplete="off"\n             value=""' in body  # unset stays empty
+    assert '<a href="/" role="button" class="secondary">Clear</a>' in body
+    assert "1 workout found" in body
 
-    assert "Clear</a>" not in client.get("/").get_data(as_text=True)
+
+def test_date_fields_start_empty_and_blank_dates_do_not_filter(client):
+    signup(client, "a@example.com")
+    create(client, lift("Old one", date=ago(400)))
+    create(client, lift("New one", date=ago(0)))
+
+    body = client.get("/").get_data(as_text=True)
+    assert 'name="from" autocomplete="off"\n             value=""' in body
+    assert 'name="to" autocomplete="off"\n             value=""' in body
+    # What the form sends when the date boxes are left empty: nothing is filtered out.
+    assert titles(client, "/?q=&type=&sort=newest&from=&to=") == ["New one", "Old one"]
 
 
 def test_empty_state_when_nothing_matches(client):

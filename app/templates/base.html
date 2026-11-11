@@ -6,91 +6,209 @@
   <title>{% block title %}LiftAssist{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
   <style>
-    :root {
-      --pico-primary: #F26B1D;
-      --pico-primary-background: #F26B1D;
-      --pico-primary-border: #F26B1D;
-      --pico-primary-hover: #d95a10;
-      --pico-primary-hover-background: #d95a10;
-      --pico-primary-hover-border: #d95a10;
-      --pico-primary-focus: rgba(242, 107, 29, 0.35);
-      --pico-primary-inverse: #fff;
+    /* ---- Theme (PLAN.md §6) ------------------------------------------------
+       Pico 2 sets its colors on `:root:not([data-theme=dark])` and friends, which beat a plain
+       `:root`. These selectors have the same weight and come later, so they win in light AND dark. */
+    :root:not([data-theme]), :root[data-theme] {
+      --accent: #F26B1D;
+      --accent-hover: #FF8A3D;
+      --on-accent: #1F2328;         /* charcoal on orange: 5.2:1 contrast (white would be 3.0:1) */
+      --radius: 0.5rem;
+      --control-height: 2.75rem;    /* every input, select and button: big enough to tap, not huge */
+      --gutter: 16px;               /* phone gutters */
+      --pico-font-size: 100%;       /* Pico scales text up to 125% on wide screens; keep one size */
+
+      --pico-border-radius: var(--radius);
+      --pico-spacing: 1rem;
+      --pico-form-element-spacing-vertical: 0.6rem;
+      --pico-form-element-spacing-horizontal: 0.9rem;
+      --pico-primary-background: var(--accent);
+      --pico-primary-border: var(--accent);
+      --pico-primary-hover-background: var(--accent-hover);
+      --pico-primary-hover-border: var(--accent-hover);
+      --pico-primary-inverse: var(--on-accent);
+      --pico-primary-focus: rgba(242, 107, 29, 0.4);
+      --pico-form-element-focus-color: var(--accent);
+      --pico-text-selection-color: rgba(242, 107, 29, 0.25);
     }
-    .brand { font-weight: 800; color: #F26B1D; text-decoration: none; }
+    /* Light: off-white background, charcoal text; links use a darker orange so they're readable. */
+    :root:not([data-theme]), :root[data-theme=light] {
+      --pico-background-color: #FAFAF7;
+      --pico-color: #1F2328;
+      --ink: #1F2328;
+      --pico-h1-color: #1F2328; --pico-h2-color: #1F2328; --pico-h3-color: #1F2328;
+      --pico-card-background-color: #fff;
+      --pico-primary: #B4490C;      /* 5.2:1 on #FAFAF7 */
+      --pico-primary-hover: #8F3A09;
+      --pico-primary-underline: rgba(180, 73, 12, 0.5);
+      --accent-text: #B4490C;
+    }
+    /* Dark (follows the phone's setting): the bright accent itself reads fine on dark gray. */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme]) {
+        --pico-background-color: #13171f;
+        --pico-color: #dfe3ea;
+        --ink: #dfe3ea;
+        --pico-h1-color: #f0f2f5; --pico-h2-color: #f0f2f5; --pico-h3-color: #f0f2f5;
+        --pico-primary: var(--accent);
+        --pico-primary-hover: var(--accent-hover);
+        --pico-primary-underline: rgba(242, 107, 29, 0.5);
+        --accent-text: var(--accent);
+        --pico-card-background-color: #1a1f29;
+      }
+    }
+    :root[data-theme=dark] { --ink: #dfe3ea; --pico-primary: var(--accent); --accent-text: var(--accent); --pico-card-background-color: #1a1f29; }
+
+    /* ---- Page frame: centered, max 960px; 16px gutters on phones, 24px from tablet up ---- */
+    body { background: var(--pico-background-color); }
+    .container { max-width: 960px; padding-inline: var(--gutter); }
+    @media (min-width: 768px) { :root:not([data-theme]), :root[data-theme] { --gutter: 24px; } }
+    main.container { padding-top: 0.5rem; padding-bottom: 3rem; }
+    .narrow { max-width: 40rem; margin-inline: auto; }          /* forms, detail pages */
+    .auth { max-width: 26rem; margin: 1rem auto 0; }           /* login / sign up card */
+    img, table, pre { max-width: 100%; }
+    .auth article { margin: 0; }
+    .auth h1 { margin-top: 0; }
+    .auth-switch { margin: 1rem 0 0; text-align: center; }
+    h1 { font-size: 1.75rem; }
+    @media (min-width: 768px) { h1 { font-size: 2rem; } }
+
+    /* ---- Nav ---- */
+    header.container nav { padding-block: 0.25rem; }
+    nav ul { flex-wrap: wrap; }
+    nav li { padding-block: 0.5rem; }
     nav form { margin: 0; }
+    .brand { font-weight: 800; font-size: 1.15rem; color: var(--accent-text); text-decoration: none; }
     nav .link-button {
-      background: none; border: none; padding: 0; margin: 0; width: auto;
-      color: var(--pico-primary); text-decoration: underline; cursor: pointer;
+      background: none; border: none; padding: 0; margin: 0; width: auto; min-height: 0;
+      color: var(--pico-primary); text-decoration: none; cursor: pointer; font-weight: 400;
     }
     .nav-email { font-size: 0.875rem; color: var(--pico-muted-color); overflow-wrap: anywhere; }
-    .flash { padding: 0.75rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem;
-             background: var(--pico-card-background-color); border-left: 4px solid #F26B1D; }
+    @media (max-width: 640px) { .nav-email { display: none; } }
+
+    /* ---- Controls: one size, one radius, everywhere ---- */
+    input:not([type=checkbox], [type=radio]), select, button, [role=button], [type=submit] {
+      min-height: var(--control-height); border-radius: var(--radius);
+    }
+    input[type=search] { --pico-border-radius: var(--radius); }   /* not Pico's pill shape */
+    button, [role=button], [type=submit] { font-weight: 600; line-height: 1.2; }
+    a[role=button] { display: inline-flex; align-items: center; justify-content: center; }
+    /* Subtle secondary (Clear, Cancel, Delete, + Add set): outlined, neutral, never loud. */
+    button.secondary, [role=button].secondary, [type=button].secondary {
+      --pico-color: var(--ink); background: transparent; color: var(--ink);
+      border: 1px solid var(--pico-muted-border-color); box-shadow: none;
+    }
+    button.secondary:hover, [role=button].secondary:hover, [type=button].secondary:hover,
+    button.secondary:focus-visible, [role=button].secondary:focus-visible {
+      background: var(--pico-card-background-color); color: var(--ink);
+      border-color: var(--pico-muted-color);
+    }
+    .danger, .danger:hover { --pico-background-color: #c62828; --pico-border-color: #c62828; --pico-color: #fff;
+                             background: #c62828; border-color: #c62828; color: #fff; }
+    .danger:hover { background: #a71f1f; border-color: #a71f1f; }
+
+    /* ---- Messages ---- */
+    .flash { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem;
+             background: var(--pico-card-background-color); border-left: 4px solid var(--accent); }
     .form-error { color: var(--pico-del-color); font-size: 0.875rem; margin-top: -0.5rem; display: block; }
-    .form-summary { padding: 0.75rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem;
+    .form-summary { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem;
                     border-left: 4px solid var(--pico-del-color); background: var(--pico-card-background-color);
                     color: var(--pico-del-color); font-weight: 600; }
     .sets-error { margin: 0.25rem 0 0; }
-    .weight-warning { border-left: 4px solid #F26B1D; }
+    .weight-warning { border-left: 4px solid var(--accent); }
     .weight-warning p { margin-bottom: 0.5rem; }
-    .set-row input.needs-weight { border-color: #F26B1D; box-shadow: 0 0 0 2px rgba(242, 107, 29, 0.35); }
+    .set-row input.needs-weight { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(242, 107, 29, 0.35); }
     fieldset[aria-invalid="true"] legend { color: var(--pico-del-color); }
-    main.container { max-width: 32rem; }
 
-    /* Workouts */
+    /* ---- Shared bits ---- */
     .muted { color: var(--pico-muted-color); }
-    .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+                 flex-wrap: wrap; margin-bottom: 1rem; }
     .page-head h1 { margin: 0; }
-    .page-head [role="button"] { white-space: nowrap; }
-    article.card { position: relative; margin-bottom: 1rem; padding: 1rem 1.25rem; scroll-margin-top: 1rem; }
-    article.card:hover, article.card:focus-within { box-shadow: 0 0 0 2px #F26B1D; }
-    .card-link { color: inherit; text-decoration: none; }
-    .card-link::after { content: ""; position: absolute; inset: 0; }  /* whole card is clickable */
-    .card-tags { display: flex; align-items: center; gap: 0.5rem; }
-
-    /* Stars */
-    .star-form { margin: 0; position: relative; z-index: 1; }  /* sits above the card link */
-    .star-button { background: none; border: none; box-shadow: none; width: auto; margin: 0;
-                   padding: 0.25rem 0.4rem; font-size: 1.6rem; line-height: 1; color: #F26B1D; cursor: pointer; }
-    .star-button:hover, .star-button:focus-visible { background: rgba(242, 107, 29, 0.12); }
-    .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; scroll-margin-top: 1rem; }
-    .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
-    .card-title { font-weight: 700; font-size: 1.1rem; margin: 0.15rem 0; }
+    .page-head [role="button"] { white-space: nowrap; margin: 0; }
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .actions > *, .actions [type=submit] { flex: 1 1 10rem; text-align: center; margin: 0; }
+    .actions form { margin: 0; }
+    .actions form button { width: 100%; margin: 0; }
     .badge { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-             letter-spacing: 0.04em; padding: 0.1rem 0.5rem; border-radius: 999px;
-             background: rgba(242, 107, 29, 0.15); color: #F26B1D; }
+             letter-spacing: 0.04em; padding: 0.1rem 0.5rem; border-radius: 999px; vertical-align: middle;
+             background: rgba(242, 107, 29, 0.15); color: var(--accent-text); }
+
+    /* ---- Workout cards: one column on phones, a grid from tablet up ---- */
+    .cards { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 768px) { .cards { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); } }
+    article.card { position: relative; margin: 0; padding: 1rem 1.25rem; scroll-margin-top: 1rem; min-width: 0; }
+    article.card:hover, article.card:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+    .card-link { color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+    .card-link::after { content: ""; position: absolute; inset: 0; }  /* whole card is clickable */
+    .card-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .card-tags { display: flex; align-items: center; gap: 0.5rem; }
+    .card-title { font-weight: 700; font-size: 1.1rem; margin: 0.15rem 0; }
     .summary { font-weight: 600; margin: 0; }
+
+    /* ---- Stars ---- */
+    .star-form { margin: 0; position: relative; z-index: 1; }  /* sits above the card link */
+    button.star-button { background: none; border: none; box-shadow: none; width: auto; margin: 0; min-height: 0;
+                         padding: 0.25rem 0.4rem; font-size: 1.6rem; line-height: 1; color: var(--accent); cursor: pointer; }
+    button.star-button:hover, button.star-button:focus-visible { background: rgba(242, 107, 29, 0.12); }
+    .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; scroll-margin-top: 1rem; }
+    .detail-head h1 { overflow-wrap: anywhere; }
+
+    /* ---- Search / filter / sort ---- */
+    .search-bar { margin-bottom: 1.5rem; }
+    .search-row { display: flex; gap: 0.5rem; }
+    .search-row input { flex: 1 1 auto; min-width: 0; margin: 0; }
+    .search-row button { flex: 0 0 auto; width: auto; margin: 0; padding-inline: 1.25rem; }
+    /* "Filters" toggle: a hidden checkbox + label, so it works without JavaScript.
+       Phones: tap to show/hide. Tablet and up: always shown, toggle hidden. */
+    .filters-toggle-box { position: absolute; opacity: 0; pointer-events: none; }
+    label.filters-toggle { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.75rem 0 0;
+                      font-weight: 600; color: var(--pico-primary); cursor: pointer; }
+    .filters-toggle::after { content: "▾"; transition: transform 0.15s; }
+    .filters-toggle-box:checked + label.filters-toggle::after { transform: rotate(180deg); }
+    .filters-toggle-box:focus-visible + .filters-toggle { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .filter-row { display: none; gap: 0.75rem; margin-top: 0.75rem; grid-template-columns: 1fr 1fr; align-items: end; }
+    .filters-toggle-box:checked ~ .filter-row { display: grid; }
+    .filter-row label { margin: 0; display: block; font-size: 0.875rem; font-weight: 600; min-width: 0; }
+    .filter-row select, .filter-row input { margin: 0.25rem 0 0; width: 100%; }
+    .filter-buttons { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
+    .filter-buttons > * { flex: 1; margin: 0; width: auto; }
+    /* Tablet: the four fields in one row, Apply + Clear on the right underneath. */
+    @media (min-width: 768px) {
+      .filter-bar label.filters-toggle { display: none; }
+      .filter-row, .filters-toggle-box:checked ~ .filter-row {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .filter-buttons { justify-content: flex-end; }
+      .filter-buttons button, .filter-buttons [role=button] { flex: 0 0 auto; width: auto; padding-inline: 1.5rem; }
+    }
+    /* Desktop: everything on one row. */
+    @media (min-width: 1024px) {
+      .filter-row, .filters-toggle-box:checked ~ .filter-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+      }
+      .filter-buttons { grid-column: auto; }
+    }
+    .search-status { margin: 0.75rem 0 0; }
+
+    /* ---- Workout form ---- */
     .type-choice { display: flex; gap: 1.5rem; }
     .type-choice label { font-size: 1.1rem; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
-    .set-row { display: grid; grid-template-columns: 2rem 1fr 1fr auto; gap: 0.5rem; align-items: center;
+    .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 1rem; }
+    .set-row { display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.5rem; align-items: center;
                padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); }
     .set-row .set-exercise { grid-column: 2 / -1; }
-    .set-row .set-num { grid-row: span 2; font-weight: 700; color: #F26B1D; text-align: center; }
+    .set-row .set-num { grid-row: span 2; font-weight: 700; color: var(--accent-text); text-align: center; }
     .set-row input { margin: 0; }
     .set-row .form-error { grid-column: 2 / -1; margin: 0; }
-    .remove-set { width: auto; margin: 0; padding: 0.5rem 0.9rem; }
+    button.remove-set { width: var(--control-height); margin: 0; padding: 0; }
     .set-actions { margin: 0.75rem 0 1.5rem; }
-    .danger { --pico-background-color: #c62828; --pico-border-color: #c62828; --pico-color: #fff; }
-    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-    .actions > * { flex: 1; text-align: center; margin: 0; }
-    .actions form { flex: 1; margin: 0; }
-    .actions form button { width: 100%; margin: 0; }
-    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-bottom: 1rem; }
+    .set-actions button { width: auto; margin: 0; }
+
+    /* ---- Detail page ---- */
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-bottom: 1rem; }
     .meta strong { display: block; font-size: 1.25rem; }
     .exercise-group table { margin-bottom: 1.25rem; }
-
-    /* Search / filter / sort */
-    .search-bar { margin-bottom: 1rem; }
-    .search-bar [role="group"] { margin-bottom: 0.5rem; }
-    .search-bar [role="group"] button { flex: 0 0 auto; }
-    .filters { margin-bottom: 0.5rem; }
-    .filters summary { font-weight: 600; color: var(--pico-primary); }
-    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.75rem; }
-    .filter-grid label { font-size: 0.875rem; }
-    .filter-grid select, .filter-grid input { margin-top: 0.25rem; margin-bottom: 0.75rem; }
-    .filters button { width: 100%; margin: 0; }
-    .search-status { display: flex; justify-content: space-between; align-items: baseline; margin: 0; }
-    @media (max-width: 30rem) { .nav-email { display: none; } }
   </style>
 </head>
 <body>
@@ -116,10 +234,12 @@
     </nav>
   </header>
   <main class="container">
+    <div class="{% block page_class %}{% endblock %}">
     {% with messages = get_flashed_messages() %}
       {% for message in messages %}<div class="flash" role="status">{{ message }}</div>{% endfor %}
     {% endwith %}
     {% block content %}{% endblock %}
+    </div>
   </main>
 </body>
 </html>

@@ -12,8 +12,10 @@
   {{ search_bar(filters, types, sorts, url_for('main.home'), workouts|length) }}
 {% endif %}
 
-{% for w in workouts %}
-  {{ card(w, starred) }}
+{% if workouts %}
+<div class="cards">
+  {% for w in workouts %}{{ card(w, starred) }}{% endfor %}
+</div>
 {% else %}
   {% if has_any %}
     {{ no_matches(url_for('main.home')) }}
@@ -23,5 +25,5 @@
       <a href="{{ url_for('workouts.new') }}" role="button">Log your first workout</a>
     </article>
   {% endif %}
-{% endfor %}
+{% endif %}
 {% endblock %}

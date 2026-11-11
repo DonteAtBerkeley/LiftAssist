@@ -69,6 +69,16 @@ def test_run_without_distance_is_rejected_even_if_field_is_missing(client, logge
     assert count(Workout) == 0
 
 
+def test_editing_run_to_zero_distance_is_rejected(client, logged_in):
+    wid = create(client, run_data(distance_mi="5"))
+    for distance in ["0", "0.0", ""]:
+        assert_rejected(client, run_data(distance_mi=distance),
+                        "Distance must be more than 0 miles." if distance else "How far did you run?",
+                        url=f"/workouts/{wid}/edit")
+    db.session.expire_all()
+    assert db.session.get(Workout, wid).distance_mi == 5
+
+
 def test_editing_lift_into_run_without_distance_is_rejected(client, logged_in):
     wid = create(client, lift_data())
     assert_rejected(client, lift_data(workout_type="run"), "How far did you run?",

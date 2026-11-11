@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% from "_field.html" import field %}
 {% block title %}Sign up · LiftAssist{% endblock %}
+{% block page_class %}auth{% endblock %}
 {% block content %}
+<article>
 <h1>Create your account</h1>
 <form method="post" novalidate>
   {{ form.hidden_tag() }}
@@ -10,5 +12,6 @@
   {{ field(form.confirm_password, "new-password") }}
   {{ form.submit() }}
 </form>
-<p>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+<p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</article>
 {% endblock %}
