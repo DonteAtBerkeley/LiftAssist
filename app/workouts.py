@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from . import catalog, db, prs
 from .forms import MSG_BLANK_WEIGHT, WorkoutForm
 from .models import Exercise, Set, Workout
+from .recommendations import NO_HISTORY_MESSAGE
 from .search import Filters, apply_filters
 
 bp = Blueprint("workouts", __name__, url_prefix="/workouts")
@@ -170,6 +171,8 @@ def _render_form(form, workout=None, weight_warning=None):
         form=form,
         workout=workout,
         exercise_options=exercise_options(),
+        own_exercise_ids={catalog.normalize(e.name): e.id for e in _own_exercises()},
+        no_history_message=NO_HISTORY_MESSAGE,
         weight_warning=weight_warning,
     )
 

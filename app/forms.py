@@ -23,6 +23,7 @@ from wtforms.validators import (
     DataRequired,
     Email,
     EqualTo,
+    InputRequired,
     Length,
     NumberRange,
     Optional,
@@ -259,3 +260,37 @@ class WorkoutForm(FlaskForm):
     def filled_sets(self):
         """The set rows the user actually typed into (fully blank rows are ignored)."""
         return [row.form for row in self.sets if not row.form.is_blank()]
+
+
+# --- Exercises (Feature 10) --------------------------------------------------
+
+MSG_REP_MIN_MISSING = "Enter the lowest reps you're aiming for."
+MSG_REP_MAX_MISSING = "Enter the highest reps you're aiming for."
+MSG_REP_RANGE_NUMBER = "Reps must be a whole number."
+MSG_REP_MIN = "Min reps must be at least 1."
+MSG_REP_MAX_ORDER = "Max reps must be more than min reps."
+
+
+class RepRangeForm(FlaskForm):
+    rep_min = IntegerField(
+        "Min reps",
+        invalid_value_message=MSG_REP_RANGE_NUMBER,
+        validators=[InputRequired(message=MSG_REP_MIN_MISSING)],
+    )
+    rep_max = IntegerField(
+        "Max reps",
+        invalid_value_message=MSG_REP_RANGE_NUMBER,
+        validators=[InputRequired(message=MSG_REP_MAX_MISSING)],
+    )
+
+    def validate_rep_min(self, field):
+        if field.data is not None and field.data < 1:
+            raise ValidationError(MSG_REP_MIN)
+
+    def validate_rep_max(self, field):
+        if field.data is None:
+            return
+        if field.data > MAX_REPS:
+            raise ValidationError(MSG_REPS_MAX)
+        if self.rep_min.data is not None and field.data <= self.rep_min.data:
+            raise ValidationError(MSG_REP_MAX_ORDER)

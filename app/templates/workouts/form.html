@@ -12,6 +12,10 @@
     <input class="set-exercise" name="sets-{{ index }}-exercise" value="{{ exercise }}"
            list="exercise-options" placeholder="Exercise" aria-label="Exercise"{{ bad(row.exercise if row) }}
            autocomplete="off" autocapitalize="words">
+    <div class="set-hint" data-set-hint hidden>
+      <p><strong data-hint-next></strong> <small class="muted" data-hint-message></small></p>
+      <button type="button" class="secondary" data-use-hint>Use this</button>
+    </div>
     <input id="sets-{{ index }}-weight_lb" name="sets-{{ index }}-weight_lb" value="{{ weight }}" type="number" step="any" min="0"
            inputmode="decimal" placeholder="lb" aria-label="Weight (lb)"{{ bad(row.weight_lb if row) }}
            {%- if row and row.needs_weight %} class="needs-weight"{% endif %}>
@@ -135,6 +139,7 @@
     if (last) {
       var from = last.querySelectorAll("input"), to = added.querySelectorAll("input");
       for (var i = 0; i < from.length; i++) to[i].value = from[i].value;
+      updateHint(added, true);
     }
     renumber();
     added.querySelector(last ? "input[name$='-reps']" : "input").focus();
@@ -146,6 +151,72 @@
     btn.closest("[data-set-row]").remove();
     renumber();
   });
+
+  // Suggestion under each set's exercise. Only "Use this" ever writes to the weight and reps boxes.
+  var ownExerciseIds = new Map(Object.entries({{ own_exercise_ids | tojson }}));
+  var noHistoryMessage = {{ no_history_message | tojson }};
+  var recommendationUrl = {{ url_for('exercises.recommendation', exercise_id=0) | tojson }};
+  var excludeWorkout = {{ (('?exclude_workout=' ~ workout.id) if workout else '') | tojson }};
+  var knownNames = new Set();
+  document.querySelectorAll("#exercise-options option").forEach(function (o) { knownNames.add(normalizeName(o.value)); });
+  var fetched = new Map();  // exercise id -> promise, so repeat sets of a lift ask the server once
+
+  function normalizeName(value) { return value.trim().replace(/\s+/g, " ").toLowerCase(); }
+
+  function fetchRecommendation(id) {
+    if (!fetched.has(id)) {
+      var url = recommendationUrl.replace("/0/", "/" + id + "/") + excludeWorkout;
+      fetched.set(id, fetch(url, { headers: { Accept: "application/json" } }).then(function (r) {
+        if (!r.ok) throw new Error("recommendation failed");
+        return r.json();
+      }).catch(function (err) { fetched.delete(id); throw err; }));
+    }
+    return fetched.get(id);
+  }
+
+  function renderHint(row, rec) {
+    var hint = row.querySelector("[data-set-hint]");
+    row.recommendation = rec;
+    hint.hidden = !rec;
+    if (!rec) return;
+    hint.querySelector("[data-hint-next]").textContent = rec.has_suggestion ? "💡 Next: " + rec.display.replace(/ /g, " ") : "";  // keep "140 lb × 8" on one line
+    hint.querySelector("[data-hint-message]").textContent = rec.message;
+    hint.querySelector("[data-use-hint]").hidden = !rec.has_suggestion;
+  }
+
+  // `settled` means the name is final (picked, or the box was left), so a custom name counts too.
+  function updateHint(row, settled) {
+    var input = row.querySelector(".set-exercise");
+    var name = normalizeName(input.value);
+    if (ownExerciseIds.has(name)) {
+      fetchRecommendation(ownExerciseIds.get(name)).then(function (rec) {
+        if (normalizeName(input.value) === name) renderHint(row, rec);  // ignore a late reply for an old name
+      }).catch(function () { renderHint(row, null); });
+    } else if (name && (settled || knownNames.has(name))) {
+      renderHint(row, { has_suggestion: false, message: noHistoryMessage });
+    } else {
+      renderHint(row, null);
+    }
+  }
+
+  rows.addEventListener("input", function (e) {
+    if (e.target.matches(".set-exercise")) updateHint(e.target.closest("[data-set-row]"), false);
+  });
+  // Leaving the box can be the start of a tap on a button below. Wait for that tap to finish,
+  // or the hint appearing would push the button out from under the finger.
+  rows.addEventListener("change", function (e) {
+    if (!e.target.matches(".set-exercise")) return;
+    var row = e.target.closest("[data-set-row]");
+    setTimeout(function () { updateHint(row, true); }, 300);
+  });
+  rows.addEventListener("click", function (e) {
+    var use = e.target.closest("[data-use-hint]");
+    if (!use) return;
+    var row = use.closest("[data-set-row]"), rec = row.recommendation;
+    if (rec.weight !== null) row.querySelector("input[name$='-weight_lb']").value = rec.weight;
+    row.querySelector("input[name$='-reps']").value = rec.reps;
+  });
+  rows.querySelectorAll("[data-set-row]").forEach(function (row) { updateHint(row, true); });
 
   // "Go back and edit" on the blank-weight warning: close it and jump to the first empty weight.
   var dismiss = document.querySelector("[data-dismiss-warning]");
