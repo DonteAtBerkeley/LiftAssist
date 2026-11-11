@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Exercises · LiftAssist{% endblock %}
+
+{% macro errors(f) %}{% for e in f.errors %}<small class="form-error">{{ e }}</small>{% endfor %}{% endmacro %}
+
+{% macro rep_input(f, exercise_id) %}
+  <div>
+    <label for="{{ f.name }}-{{ exercise_id }}">{{ f.label.text }}</label>
+    {{ f(id=f.name ~ "-" ~ exercise_id, min="1", step="1", inputmode="numeric", **({"aria-invalid": "true"} if f.errors else {})) }}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Exercises</h1>
+  <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
+</div>
+
+{% if not rows %}
+  <article class="dash-empty">
+    <p><strong>💡 No exercises yet.</strong></p>
+    <p class="muted">Log a lift and your exercises will show up here, each with a target for next time.</p>
+    <a href="{{ url_for('workouts.new') }}" role="button">Log a workout</a>
+  </article>
+{% else %}
+  <article class="pr-list">
+    {% for row in rows %}
+      {% set e = row.exercise %}
+      {% set rec = row.recommendation %}
+      <section class="exercise-row" id="exercise-{{ e.id }}">
+        <div class="exercise-info">
+          <h2 class="pr-name">{{ e.name }}{% if e.is_bodyweight %} <span class="badge">Bodyweight</span>{% endif %}</h2>
+          {% if rec.has_suggestion %}<p class="exercise-next">💡 Next: {{ rec.display }}</p>{% endif %}
+          <p class="muted exercise-message">{{ rec.message }}</p>
+        </div>
+        <form method="post" novalidate class="rep-range"
+              action="{{ url_for('exercises.update_rep_range', exercise_id=e.id, _anchor='exercise-' ~ e.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {{ rep_input(row.form.rep_min, e.id) }}
+          {{ rep_input(row.form.rep_max, e.id) }}
+          <button type="submit" class="secondary" aria-label="Save rep range for {{ e.name }}">Save</button>
+          <div class="rep-range-notes">
+            {{ errors(row.form.rep_min) }}{{ errors(row.form.rep_max) }}
+            {% if saved == e.id %}<small class="rep-range-saved" role="status">Saved. Target updated.</small>{% endif %}
+            {% if e.is_bodyweight %}<small class="muted">Bodyweight targets only count reps, so the range doesn't change them.</small>{% endif %}
+          </div>
+        </form>
+      </section>
+    {% endfor %}
+  </article>
+{% endif %}
+{% endblock %}
