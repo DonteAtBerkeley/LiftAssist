@@ -12,6 +12,7 @@
     <input class="set-exercise" name="sets-{{ index }}-exercise" value="{{ exercise }}"
            list="exercise-options" placeholder="Exercise" aria-label="Exercise"{{ bad(row.exercise if row) }}
            autocomplete="off" autocapitalize="words">
+    <button type="button" class="secondary remove-set" data-remove-set aria-label="Remove set">✕</button>
     <div class="set-hint" data-set-hint hidden>
       <p><strong data-hint-next></strong> <small class="muted" data-hint-message></small></p>
       <button type="button" class="secondary" data-use-hint>Use this</button>
@@ -21,7 +22,7 @@
            {%- if row and row.needs_weight %} class="needs-weight"{% endif %}>
     <input name="sets-{{ index }}-reps" value="{{ reps }}" type="number" min="1" step="1"
            inputmode="numeric" placeholder="reps" aria-label="Reps"{{ bad(row.reps if row) }}>
-    <button type="button" class="secondary remove-set" data-remove-set aria-label="Remove set">✕</button>
+    <button type="button" class="secondary same-again" data-same-again aria-label="Same again: copy this set">+ Same again</button>
     {% if row %}{{ errors(row.exercise) }}{{ errors(row.weight_lb) }}{{ errors(row.reps) }}{% endif %}
   </div>
 {% endmacro %}
@@ -30,7 +31,11 @@
 
 {% block page_class %}narrow{% endblock %}
 {% block content %}
+{% set details_have_errors = form.duration_min.errors or form.effort.errors or form.notes.errors %}
 <h1>{{ 'Edit workout' if workout else 'New workout' }}</h1>
+{% if repeating %}
+  <p class="muted">Repeating <strong>{{ repeating.title }}</strong>, dated today. Change anything, then save.</p>
+{% endif %}
 
 {% if form.summary_error %}
   <p class="form-summary" role="alert">{{ form.summary_error }}</p>
@@ -50,7 +55,8 @@
   </article>
 {% endif %}
 
-<form method="post" novalidate id="workout-form">
+{# Repeat posts to /workouts/new: it's just a new workout that starts filled in. #}
+<form method="post" novalidate id="workout-form"{% if repeating %} action="{{ url_for('workouts.new') }}"{% endif %}>
   {{ form.hidden_tag() }}
 
   <fieldset{{ bad(form.workout_type) }}>
@@ -62,18 +68,6 @@
     </div>
     {{ errors(form.workout_type) }}
   </fieldset>
-
-  {{ field(form.date) }}
-  {{ field(form.title, "off") }}
-
-  <div class="grid-2">
-    <div>
-      <label for="{{ form.duration_min.id }}">{{ form.duration_min.label.text }}</label>
-      {{ form.duration_min(type="number", min="1", step="1", inputmode="numeric", **({"aria-invalid": "true"} if form.duration_min.errors else {})) }}
-      {{ errors(form.duration_min) }}
-    </div>
-    <div>{{ field(form.effort) }}</div>
-  </div>
 
   <section id="run-fields" data-for-type="run">
     <label for="{{ form.distance_mi.id }}">{{ form.distance_mi.label.text }}</label>
@@ -99,7 +93,29 @@
     </div>
   </section>
 
-  {{ field(form.notes) }}
+  <div class="grid-2">
+    <div>{{ field(form.date) }}</div>
+    <div>
+      <label for="{{ form.title.id }}">{{ form.title.label.text }} <small class="muted">(optional)</small></label>
+      {{ form.title(autocomplete="off", placeholder="Named for you", **({"aria-invalid": "true"} if form.title.errors else {})) }}
+      {{ errors(form.title) }}
+    </div>
+  </div>
+
+  {# Opens by itself if something in here needs fixing, so an error is never hidden. #}
+  <details class="more-details"{% if details_have_errors %} open{% endif %}>
+    <summary><span>More details <small class="muted">· duration, effort, notes</small></span></summary>
+    <div class="grid-2">
+      <div>
+        <label for="{{ form.duration_min.id }}">{{ form.duration_min.label.text }}</label>
+        {{ form.duration_min(type="number", min="1", step="1", inputmode="numeric", **({"aria-invalid": "true"} if form.duration_min.errors else {})) }}
+        {{ errors(form.duration_min) }}
+      </div>
+      <div>{{ field(form.effort) }}</div>
+    </div>
+    {{ field(form.notes) }}
+  </details>
+
   <div class="actions">
     {{ form.submit() }}
     <a href="{{ url_for('workouts.detail', workout_id=workout.id) if workout else url_for('main.home') }}"
@@ -114,7 +130,6 @@
   var form = document.getElementById("workout-form");
   var rows = document.getElementById("set-rows");
   var template = document.getElementById("set-row-template");
-  var nextIndex = rows.querySelectorAll("[data-set-row]").length;
 
   // Show distance for runs, sets for lifts.
   function showType() {
@@ -125,24 +140,55 @@
     });
   }
 
+  // Number the rows 1, 2, 3… and keep each input's name in screen order (sets-0-…, sets-1-…),
+  // so a set copied into the middle is saved in the middle.
   function renumber() {
-    rows.querySelectorAll("[data-set-num]").forEach(function (el, i) { el.textContent = i + 1; });
+    rows.querySelectorAll("[data-set-row]").forEach(function (row, i) {
+      row.querySelector("[data-set-num]").textContent = i + 1;
+      row.querySelectorAll("input").forEach(function (input) {
+        input.name = input.name.replace(/^sets-[^-]+-/, "sets-" + i + "-");
+        if (input.id) input.id = input.id.replace(/^sets-[^-]+-/, "sets-" + i + "-");
+      });
+    });
   }
 
-  // New set rows copy the previous row (same exercise, weight, reps) so repeat sets are one tap.
+  function newRow() {
+    var wrap = document.createElement("div");
+    wrap.innerHTML = template.innerHTML.replace(/__i__/g, "new");
+    return wrap.firstElementChild;
+  }
+
+  // Copy exercise, weight and reps (and whether each was filled in for you) from one row to another.
+  function copyRow(from, to) {
+    var a = from.querySelectorAll("input"), b = to.querySelectorAll("input");
+    for (var i = 0; i < a.length; i++) {
+      b[i].value = a[i].value;
+      if (a[i].dataset.auto) b[i].dataset.auto = a[i].dataset.auto;
+      if (a[i].dataset.touched) b[i].dataset.touched = a[i].dataset.touched;
+    }
+  }
+
+  // "+ Add set" copies the last row (same exercise, weight, reps) and puts you in its reps box.
   document.getElementById("add-set").addEventListener("click", function () {
     var all = rows.querySelectorAll("[data-set-row]");
     var last = all[all.length - 1];
-    var html = template.innerHTML.replace(/__i__/g, String(nextIndex++));
-    rows.insertAdjacentHTML("beforeend", html);
-    var added = rows.lastElementChild;
-    if (last) {
-      var from = last.querySelectorAll("input"), to = added.querySelectorAll("input");
-      for (var i = 0; i < from.length; i++) to[i].value = from[i].value;
-      updateHint(added, true);
-    }
+    var added = newRow();
+    rows.appendChild(added);
+    if (last) { copyRow(last, added); updateHint(added, true); }
     renumber();
     added.querySelector(last ? "input[name$='-reps']" : "input").focus();
+  });
+
+  // "+ Same again": one tap puts an identical set right below this one. No keyboard pops up.
+  rows.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-same-again]");
+    if (!btn) return;
+    var row = btn.closest("[data-set-row]"), copy = newRow();
+    row.after(copy);
+    copyRow(row, copy);
+    renumber();
+    updateHint(copy, true);
+    copy.scrollIntoView({ block: "nearest" });
   });
 
   rows.addEventListener("click", function (e) {
@@ -152,7 +198,8 @@
     renumber();
   });
 
-  // Suggestion under each set's exercise. Only "Use this" ever writes to the weight and reps boxes.
+  // Suggestion under each set's exercise. An EMPTY weight or reps box is filled with it for you;
+  // anything you typed is never overwritten. "Use this" applies it on purpose.
   var ownExerciseIds = new Map(Object.entries({{ own_exercise_ids | tojson }}));
   var noHistoryMessage = {{ no_history_message | tojson }};
   var recommendationUrl = {{ url_for('exercises.recommendation', exercise_id=0) | tojson }};
@@ -174,9 +221,30 @@
     return fetched.get(id);
   }
 
+  // A box may be filled for you only if you haven't typed in it and it's empty
+  // (or still holds an earlier suggestion).
+  function fillable(input) { return !input.dataset.touched && (input.value === "" || input.dataset.auto); }
+
+  function prefill(row, rec) {
+    var boxes = [
+      [row.querySelector("input[name$='-weight_lb']"), rec && rec.has_suggestion ? rec.weight : null],
+      [row.querySelector("input[name$='-reps']"), rec && rec.has_suggestion ? rec.reps : null],
+    ];
+    boxes.forEach(function (pair) {
+      var input = pair[0], value = pair[1];
+      if (!fillable(input)) return;
+      if (value !== null && value !== undefined) {
+        input.value = value; input.dataset.auto = "1";
+      } else if (input.dataset.auto) {
+        input.value = ""; delete input.dataset.auto;  // the exercise changed: drop the old suggestion
+      }
+    });
+  }
+
   function renderHint(row, rec) {
     var hint = row.querySelector("[data-set-hint]");
     row.recommendation = rec;
+    prefill(row, rec);
     hint.hidden = !rec;
     if (!rec) return;
     hint.querySelector("[data-hint-next]").textContent = rec.has_suggestion ? "💡 Next: " + rec.display.replace(/ /g, " ") : "";  // keep "140 lb × 8" on one line
@@ -201,6 +269,7 @@
 
   rows.addEventListener("input", function (e) {
     if (e.target.matches(".set-exercise")) updateHint(e.target.closest("[data-set-row]"), false);
+    else { e.target.dataset.touched = "1"; delete e.target.dataset.auto; }  // you typed it: it's yours
   });
   // Leaving the box can be the start of a tap on a button below. Wait for that tap to finish,
   // or the hint appearing would push the button out from under the finger.
@@ -216,6 +285,11 @@
     if (rec.weight !== null) row.querySelector("input[name$='-weight_lb']").value = rec.weight;
     row.querySelector("input[name$='-reps']").value = rec.reps;
   });
+  {% if workout or request.method != 'GET' %}
+  // Editing, or the form came back with a question or an error: what's in the boxes is yours,
+  // blanks included (e.g. a blank weight you were just asked about). Don't fill anything in.
+  rows.querySelectorAll("input:not(.set-exercise)").forEach(function (input) { input.dataset.touched = "1"; });
+  {% endif %}
   rows.querySelectorAll("[data-set-row]").forEach(function (row) { updateHint(row, true); });
 
   // "Go back and edit" on the blank-weight warning: close it and jump to the first empty weight.
