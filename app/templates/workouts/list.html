@@ -8,7 +8,10 @@
     <h1>Workouts</h1>
     {% if streak.current %}<span class="streak-badge">🔥 {{ streak.current }}-week streak</span>{% endif %}
   </div>
-  <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
+  <div class="head-buttons">
+    {% if has_any %}<a href="{{ url_for('workouts.repeat') }}" role="button" class="secondary">↻ Repeat last workout</a>{% endif %}
+    <a href="{{ url_for('workouts.new') }}" role="button">+ New workout</a>
+  </div>
 </div>
 
 {% if has_any %}

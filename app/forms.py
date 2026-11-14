@@ -96,8 +96,15 @@ MSG_BLANK_WEIGHT = "Some sets have no weight. Is this a bodyweight exercise?"
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
+DEFAULT_EFFORT = 3
+
 MAX_DURATION_MIN = 24 * 60
 MAX_REPS = 1000
+
+
+def default_title(d, workout_type):
+    """e.g. "Wednesday, Nov 4 — Lift": the name a workout gets when its title is left blank."""
+    return f"{DAY_NAMES[d.weekday()]}, {MONTH_ABBR[d.month - 1]} {d.day} — {workout_type.title()}"
 
 
 def number_check(ok, message):
@@ -208,6 +215,7 @@ class WorkoutForm(FlaskForm):
         "Effort (1–5)",
         choices=[SelectChoice("", "—")] + [SelectChoice(str(n), str(n)) for n in range(1, 6)],
         coerce=_effort,
+        default=DEFAULT_EFFORT,  # a new workout starts at 3; "—" still clears it
         invalid_value_message=MSG_EFFORT,
         invalid_choice_message=MSG_EFFORT,
         validators=[Optional()],
@@ -254,8 +262,7 @@ class WorkoutForm(FlaskForm):
 
     def default_title(self):
         """e.g. "Wednesday, Nov 4 — Lift". Used when the title is left blank."""
-        d = self.date.data
-        return f"{DAY_NAMES[d.weekday()]}, {MONTH_ABBR[d.month - 1]} {d.day} — {self.workout_type.data.title()}"
+        return default_title(self.date.data, self.workout_type.data)
 
     def filled_sets(self):
         """The set rows the user actually typed into (fully blank rows are ignored)."""

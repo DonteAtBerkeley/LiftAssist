@@ -5,13 +5,15 @@ filters by both the workout id AND current_user.id, so another user's workout
 simply "doesn't exist" (404) for you.
 """
 
+from datetime import date
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 from . import catalog, db, prs
-from .forms import MSG_BLANK_WEIGHT, WorkoutForm
+from .forms import MSG_BLANK_WEIGHT, WorkoutForm, default_title
 from .models import Exercise, Set, Workout
 from .recommendations import NO_HISTORY_MESSAGE
 from .search import Filters, apply_filters
@@ -41,6 +43,16 @@ def has_any_workouts():
     return db.session.execute(
         db.select(Workout.id).filter_by(user_id=current_user.id).limit(1)
     ).first() is not None
+
+
+def last_workout():
+    """The logged-in user's most recent workout (latest date, then latest logged), or None."""
+    return db.session.execute(
+        db.select(Workout)
+        .filter_by(user_id=current_user.id)
+        .order_by(Workout.date.desc(), Workout.created_at.desc(), Workout.id.desc())
+        .limit(1)
+    ).scalar()
 
 
 def _get_own_workout(workout_id):
@@ -162,7 +174,7 @@ def _prefill_sets(form, workout):
         )
 
 
-def _render_form(form, workout=None, weight_warning=None):
+def _render_form(form, workout=None, weight_warning=None, repeating=None):
     # Always show at least one empty set row so the user can start typing.
     if not form.sets.entries:
         form.sets.append_entry()
@@ -170,6 +182,7 @@ def _render_form(form, workout=None, weight_warning=None):
         "workouts/form.html",
         form=form,
         workout=workout,
+        repeating=repeating,
         exercise_options=exercise_options(),
         own_exercise_ids={catalog.normalize(e.name): e.id for e in _own_exercises()},
         no_history_message=NO_HISTORY_MESSAGE,
@@ -210,7 +223,33 @@ def new():
     form = WorkoutForm()
     if request.method == "POST":
         return _save_or_rerender(form, Workout(user_id=current_user.id), "Workout saved.")
+    last = last_workout()
+    if last is not None:
+        form.workout_type.data = last.workout_type  # remember lift vs run from last time
     return _render_form(form)
+
+
+@bp.route("/repeat")
+@login_required
+def repeat():
+    """The new-workout form, prefilled from your most recent workout and dated today.
+
+    Nothing is saved here: the form posts to /workouts/new like any other new workout.
+    """
+    last = last_workout()
+    if last is None:
+        flash("Log a workout first, then you can repeat it.")
+        return redirect(url_for("workouts.new"))
+    form = WorkoutForm(formdata=None)
+    form.date.data = date.today()
+    form.workout_type.data = last.workout_type
+    # An auto-made title names the old date ("Tuesday, Nov 3 — Lift"); leave it blank so the
+    # new one gets today's. A title you chose ("Push day") is kept.
+    form.title.data = "" if last.title == default_title(last.date, last.workout_type) else last.title
+    if last.workout_type == "run":
+        form.distance_mi.data = last.distance_mi
+    _prefill_sets(form, last)
+    return _render_form(form, repeating=last)
 
 
 @bp.route("/<int:workout_id>")
