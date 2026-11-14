@@ -2,7 +2,7 @@
 
 LiftAssist is a mobile-first workout log for lifting sessions and runs. You log each workout with its sets (exercise, weight, reps) or run distance. The app then shows how your training is going: weekly volume and miles, personal records, a weekly streak, and a suggested weight and rep target for your next session. Every account is private, so you only ever see your own data.
 
-**Live app:** YOUR-LIVE-URL
+**Live app:** https://liftassist.onrender.com
 > It runs on Render's free tier, so the first visit after a quiet period can take about 60 seconds while the server wakes up.
 
 ## Main features
