@@ -105,3 +105,20 @@ users ──< workouts ──< sets >── exercises >── users
 
 - **Least sure I can build:** the **recommendations** feature. The rule needs "last session" and "two sessions in a row" per exercise, which is the trickiest query in the app, and edge cases (skipped weeks, changing rep ranges) could break it.
 - **Cut first if short on time:** (1) run pace PRs (keep lift PRs only), (2) the deload rule in recommendations (keep only +5 lb / +1 rep), (3) dark mode.
+
+## Plan vs. Reality
+
+| Planned feature | Shipped / Changed / Cut | Status (Done/Backlogged) | Learning | What changed and why (one line) |
+|---|---|---|---|---|
+| 1. Sign up and login | Shipped | Done | TODO | Built as planned (PR #4), plus a follow-up commit to make the app deploy-ready for Render + Neon Postgres (gunicorn, Postgres drivers). |
+| 2. Data model | Changed | Done | TODO | All four planned tables shipped (PR #6) with extra database checks and cascade deletes; an `is_bodyweight` column was added to `exercises` later in Feature 4 to support the exercise catalog. |
+| 3. Create / read / update / delete workouts | Shipped | Done | TODO | Built as planned (PR #8), with exercise-name autocomplete and an "Are you sure?" delete step; it was stacked on the data-model branch because that PR wasn't merged yet. |
+| 4. Validation | Changed | Done | TODO | After testing, title became optional with a default ("Wednesday, Nov 4 — Lift"); a built-in catalog of ~100 exercises tagged weighted/bodyweight was added; a blank weight on a weighted exercise now triggers a "Save anyway" warning (PR #10). |
+| 5. Stars | Shipped | Done | TODO | Built as planned (PR #12): POST-only star toggle on cards and the detail page, a Starred page, and one shared `stars` junction table. |
+| 6. Find things (search, filter, sort) | Changed | Done | TODO | Shipped with an extra "Longest duration" sort and search on the Starred page, but it never got its own PR: it was merged bundled with an app-wide layout and styling fix (PR #14). |
+| 7. Dashboard | Shipped | Done | TODO | Built as planned (PR #16) with the four stats and the 8-week Chart.js chart, plus required test #2 (monthly volume = 2,500 lb). |
+| 8. PR tracker | Changed | Done | TODO | PRs are calculated from sets instead of stored, so edits and deletes stay correct; bodyweight PRs are tracked by most reps (Epley doesn't work at 0 lb); longest run was added; a first-ever log isn't celebrated (PR #18). |
+| 9. Streak counter | Shipped | Done | TODO | Built as planned (PR #20): streaks are calculated, not stored, and the in-progress week never breaks the current streak. |
+| 10. Weight and rep recommendations | Changed | Done | TODO | The deload is rounded to the nearest 5 lb at the bottom of the rep range; "otherwise" means the lowest reps + 1, capped at the top; bodyweight exercises get +1 rep; a new Exercises page lets you edit rep ranges (PR #22). |
+
+Nothing from section 7's cut list was cut: run pace PRs, the deload rule and dark mode all shipped. Required test #1 (data isolation) was added in PR #24.
