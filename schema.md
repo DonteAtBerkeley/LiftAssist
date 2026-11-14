@@ -4,13 +4,20 @@ Five tables. Every table except `users` belongs to a user through a `user_id` co
 
 Defined in `app/models.py`; created by the migrations in `migrations/versions/`.
 
+Migrations, in order:
+1. `58b9e7417e17`: create `users`
+2. `abfe6ec09ba8`: add `workouts`, `exercises`, `sets`, `stars`
+3. `82ee7e891171`: add `exercises.is_bodyweight`
+
+Every `user_id`, `workout_id` and `exercise_id` column has an index.
+
 ## Tables
 
 ### users
 | Column | Type | Rules |
 |---|---|---|
 | id | integer | primary key |
-| email | varchar(255) | required, unique |
+| email | varchar(255) | required, unique (indexed); stored lowercase |
 | password_hash | varchar(255) | required; a hash, never the plain password |
 | created_at | datetime | required, set automatically |
 
@@ -35,7 +42,7 @@ Defined in `app/models.py`; created by the migrations in `migrations/versions/`.
 | user_id | integer | required → `users.id` |
 | name | varchar(120) | required; unique **per user** (two users can each have "Back squat") |
 | rep_min | integer | required, default 8; ≥ 1 |
-| rep_max | integer | required, default 12; ≥ rep_min |
+| rep_max | integer | required, default 12; ≥ rep_min (the Exercises page form is stricter: min must be less than max, and max ≤ 1000) |
 | is_bodyweight | boolean | required, default false. Copied from the built-in catalog (`app/catalog.py`) the first time the user logs that exercise; custom names are `false` (weighted). Added in migration `82ee7e891171`, which also tags existing exercises whose names match a bodyweight catalog entry. |
 
 The built-in exercise catalog (about 100 common exercises, each "weighted" or "bodyweight") lives in code, not in this table. It's only a list of suggestions: a row is created here when a user actually logs one. Names match ignoring case and extra spaces, so "bench press" and "Bench Press" are the same exercise, and a catalog exercise is saved with the catalog's spelling.
@@ -112,3 +119,13 @@ users ──< workouts ──< sets >── exercises >── users
 | `Star` | `.user`, `.workout` | |
 
 Deletes cascade both in Python (SQLAlchemy `cascade="all, delete-orphan"`) and in the database (`ON DELETE CASCADE`). SQLite only enforces foreign keys when asked, so `app/models.py` turns on `PRAGMA foreign_keys=ON` for every SQLite connection.
+
+## Plan vs. built
+
+Compared with PLAN.md section 3, the tables, columns and relationships are the same, with these differences:
+
+- **`exercises.is_bodyweight` is new.** It wasn't in the plan. It was added in Feature 4 (validation, round 2) along with the built-in exercise catalog. It lets the app treat a blank weight as 0 lb without a warning, track bodyweight PRs by reps, and give bodyweight exercises a "+1 rep" recommendation instead of a weight change.
+- **`workouts.title` is optional and gets a default.** The plan gave only examples. The form fills a blank title with the day, date and type.
+- **No PR or recommendation tables.** As in the plan, PRs, streaks, stats and recommendations are not stored. They're calculated from `workouts` and `sets` every time, so editing or deleting a workout always keeps them correct.
+- **More rules in the database than planned.** There are check constraints (type is lift/run, effort 1–5, reps ≥ 1, weight ≥ 0, set_number ≥ 1, rep_min ≥ 1, rep_max ≥ rep_min, duration/distance ≥ 0) and cascade deletes. `ON DELETE RESTRICT` stops an exercise with logged sets from being deleted.
+- **Concrete types.** The plan's "number" became `integer`, or `float` for `distance_mi` and `weight_lb`. "date" became `date` for `workouts.date` and `datetime` for the `created_at` columns.
